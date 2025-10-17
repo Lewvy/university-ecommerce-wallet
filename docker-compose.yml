@@ -1,0 +1,29 @@
+# docker-compose.yml
+
+services:
+  # The PostgreSQL Database Service
+  db:
+    image: postgres:18-alpine
+    restart: always
+    environment:
+      # Set your desired username, password, and database name
+      - POSTGRES_USER=wallet
+      - POSTGRES_PASSWORD=mypassword
+      - POSTGRES_DB=mydb
+    ports:
+      - "5437:5432"
+    volumes:
+    - wallet_data:/var/lib/postgresql/data
+
+  api:
+    build: .
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      - GOOSE_DBSTRING=postgres://myuser:mypassword@db:5432/mydb?sslmode=disable
+    depends_on:
+      - db
+
+volumes:
+  wallet_data:

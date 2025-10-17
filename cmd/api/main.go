@@ -2,31 +2,36 @@ package main
 
 import (
 	"ecommerce/cmd/api/handlers"
+	"ecommerce/internal/api"
 	"ecommerce/internal/config"
 	"ecommerce/internal/logger"
+
+	// "ecommerce/internal/logger"
 	"log/slog"
 
 	"github.com/joho/godotenv"
 )
 
 type application struct {
-	cfg     config.Config
-	logger  *slog.Logger
-	handler *handlers.Handler
+	Cfg     config.Config
+	Logger  *slog.Logger
+	Handler *handlers.Handler
 }
 
 func main() {
 	godotenv.Load()
 
 	cfg := config.NewConfig()
-	l := logger.NewLogger(cfg.Env)
-	h := handlers.New(&cfg, l)
+	api.SetupServer(&cfg, logger.NewLogger("dev"))
 
-	app := &application{
-		cfg:     cfg,
-		logger:  l,
-		handler: h,
-	}
+	// cfg := config.NewConfig()
+	// l := logger.NewLogger(cfg.Env)
+	// h := handlers.New(&cfg, l)
 
-	app.server()
+	// app := &Application{
+	// 	Cfg:     cfg,
+	// 	Logger:  l,
+	// 	Handler: h,
+	// }
+
 }

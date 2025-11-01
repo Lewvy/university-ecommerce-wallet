@@ -18,6 +18,8 @@ type application struct {
 	Handler *handlers.Handler
 }
 
+gray graay
+
 func main() {
 	godotenv.Load()
 

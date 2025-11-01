@@ -6,7 +6,6 @@ services:
     image: postgres:18-alpine
     restart: always
     environment:
-      # Set your desired username, password, and database name
       - POSTGRES_USER=wallet
       - POSTGRES_PASSWORD=mypassword
       - POSTGRES_DB=mydb

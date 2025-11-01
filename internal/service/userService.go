@@ -10,5 +10,9 @@ func (s UserService) FindUserByEmail(email string) (*domain.User, error) {
 }
 
 func (s UserService) Signup(input any) (string, error) {
-	return "", nil
+	user := struct {
+		email    string
+		password string
+		name     string
+	}{}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"ecommerce/cmd/api/handlers"
 	"ecommerce/internal/api"
 	"ecommerce/internal/config"
@@ -16,6 +17,7 @@ type application struct {
 	Cfg     config.Config
 	Logger  *slog.Logger
 	Handler *handlers.Handler
+	DB      *sql.DB
 }
 
 func main() {

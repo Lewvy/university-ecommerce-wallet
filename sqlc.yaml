@@ -1,11 +1,12 @@
 version: "2"
 sql:
- -  engine: "postgresql"
-    queries: "./sql/queries"
-    schema: "./sql/schema"
-    gen:
-        go:
-            package: "db"
-            out: "./internal/data"
-            sql_package: "pgx/v5"
-            
+-  engine: "postgresql"
+   queries: "./sql/queries"
+   schema: "./sql/schema"
+   gen:
+       go:
+           package: "db"
+           out: "./internal/data"
+           sql_package: "pgx/v5"
+           output_db_file_name: "store.go"
+           

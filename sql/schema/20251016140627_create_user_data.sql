@@ -10,13 +10,14 @@ $$ LANGUAGE plpgsql;
 
 CREATE TABLE if not exists users (
 	id SERIAL PRIMARY KEY,
-	name VARCHAR(50) NOT NULL,
-	email VARCHAR(100) NOT NULL UNIQUE,
+	name text NOT NULL,
+	email text NOT NULL UNIQUE,
 	password_hash BYTEA NOT NULL,
 	upi_id TEXT UNIQUE,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+	 user_type text NOT NULL DEFAULT 'customer',
 	version INT NOT NULL DEFAULT 1
 );
 

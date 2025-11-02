@@ -1,8 +1,9 @@
 package handlers
 
 import (
-	"ecommerce/internal/api/helpers"
 	"ecommerce/internal/api/rest"
+	"ecommerce/internal/dto"
+	"ecommerce/internal/service"
 	"log/slog"
 	"net/http"
 
@@ -10,16 +11,18 @@ import (
 )
 
 type UserHandler struct {
-	l *slog.Logger
+	logger *slog.Logger
+	svc    service.UserService
 }
 
 func UserRoutes(rh *rest.RestHandler) {
 	app := rh.App
 
-	//TODO:: create a user service and pass it to handler
+	svc := service.UserService{}
 
 	h := UserHandler{
-		l: rh.Logger,
+		logger: rh.Logger,
+		svc:    svc,
 	}
 	app.Post("/register", h.RegisterUserHandler)
 	app.Post("/login", h.LoginUserHandler)
@@ -67,7 +70,7 @@ func (h *UserHandler) CreateCart(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) GetCart(c *fiber.Ctx) error {
-	h.l.Info("message", "cart", "empty")
+	h.logger.Info("message", "cart", "empty")
 	return c.Status(http.StatusOK).JSON(map[string]string{
 		"message": "get cart",
 	})
@@ -78,13 +81,22 @@ func (h *UserHandler) GetProfile(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) RegisterUserHandler(c *fiber.Ctx) error {
-	var input struct {
-		Name     string `json:"name"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
+	var input dto.UserSignup
+	err := c.BodyParser(&input)
+	if err != nil {
+		h.logger.Error("Error decoding", "err", err)
+		return err
 	}
-	helpers.ReadBody(c, &input)
 
+	validation_check, err := h.svc.Signup(input)
+	if validation_check != nil {
+		c.Status(http.StatusBadRequest).JSON(validation_check)
+		return nil
+	}
+	if err != nil {
+		c.Status(http.StatusBadRequest).JSON(err)
+		return err
+	}
 	return c.Status(http.StatusCreated).JSON(&input, "application/text")
 }
 
@@ -93,6 +105,6 @@ func (h *UserHandler) LoginUserHandler(c *fiber.Ctx) error {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
-	helpers.ReadBody(c, &input)
+	c.BodyParser(&input)
 	return c.Status(http.StatusOK).JSON(&input)
 }

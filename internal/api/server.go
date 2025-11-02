@@ -17,7 +17,8 @@ func SetupServer(config *config.Config, logger *slog.Logger) {
 	}
 
 	setupRoutes(rh)
-	app.Listen(config.Port)
+	err := app.Listen(config.Port)
+	rh.Logger.Error("error running server", "err", err)
 }
 
 func setupRoutes(rh *rest.RestHandler) {

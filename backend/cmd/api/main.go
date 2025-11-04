@@ -2,6 +2,7 @@ package main
 
 import (
 	"ecommerce/internal/api"
+	"ecommerce/internal/cache"
 	"ecommerce/internal/config"
 	"ecommerce/internal/data"
 	"ecommerce/internal/data/gen"
@@ -20,9 +21,17 @@ func main() {
 
 	if err != nil {
 		logger.Error("Error loading env", "err", err)
+		return
 	}
 
 	cfg := config.NewConfig()
+
+	cacheClient, err := cache.New()
+	if err != nil {
+		logger.Error("Error loading cache", "error", err)
+		return
+	}
+	_ = cacheClient
 
 	dbPool, err := data.NewDBPool(cfg.DBString)
 	if err != nil {

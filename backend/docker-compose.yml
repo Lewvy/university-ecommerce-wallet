@@ -1,25 +1,41 @@
+
 services:
   db:
-    image: postgres:18-alpine
+    image: postgres:17-alpine
     restart: always
     environment:
-      - POSTGRES_USER=wallet
-      - POSTGRES_PASSWORD=mypassword
-      - POSTGRES_DB=mydb
+      POSTGRES_USER: wallet  
+      POSTGRES_PASSWORD: norton_texas 
+      POSTGRES_DB: wallet        
     ports:
-      - "5437:5432"
+      - "5436:5432" 
     volumes:
-    - wallet_data:/var/lib/postgresql/data
+      - wallet_data:/var/lib/postgresql/data
+
+  valkey:
+    image: valkey/valkey:latest
+    restart: always
+    ports:
+      - "6400:6379"
 
   api:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
     restart: always
     ports:
-      - "8081:8081"
+      - "8088:8088"
+    env_file:
+      - .env
     environment:
-      - GOOSE_DBSTRING=postgres://myuser:mypassword@db:5432/mydb?sslmode=disable
+    - GOOSE_DBSTRING=postgres://${DB_USER}:${DB_PASS}@db:5432/${DB_NAME}?sslmode=disable
+    - CACHE_DSN=valkey://valkey:6379/0
     depends_on:
       - db
+      - valkey 
+    volumes:
+      - .:/app
 
 volumes:
   wallet_data:
+

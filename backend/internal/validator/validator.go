@@ -10,29 +10,29 @@ var (
 	NonNumericRX = regexp.MustCompile(`[^\d]`)
 )
 
-type Validator struct {
+type ValidationError struct {
 	Errors map[string]string
 }
 
-func (Validator) Error() string {
-	return "validation failed"
+func (v *ValidationError) Error() string {
+	return "validation error"
 }
 
-func New() *Validator {
-	return &Validator{Errors: make(map[string]string)}
+func New() *ValidationError {
+	return &ValidationError{Errors: make(map[string]string)}
 }
 
-func (v *Validator) Valid() bool {
+func (v *ValidationError) Valid() bool {
 	return len(v.Errors) == 0
 }
 
-func (v *Validator) AddError(key, message string) {
+func (v *ValidationError) AddError(key, message string) {
 	if _, exists := v.Errors[key]; !exists {
 		v.Errors[key] = message
 	}
 }
 
-func (v *Validator) Check(ok bool, key, message string) {
+func (v *ValidationError) Check(ok bool, key, message string) {
 	if !ok {
 		v.AddError(key, message)
 	}
@@ -42,7 +42,7 @@ func PermittedValue[T comparable](value T, permittedValues ...T) bool {
 	return slices.Contains(permittedValues, value)
 }
 
-func (v *Validator) Matches(value string, rx *regexp.Regexp) bool {
+func (v *ValidationError) Matches(value string, rx *regexp.Regexp) bool {
 	return rx.MatchString(value)
 }
 

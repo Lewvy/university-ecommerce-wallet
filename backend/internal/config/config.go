@@ -19,7 +19,8 @@ type Config struct {
 
 func NewConfig() (cfg Config) {
 	cfg.Port = os.Getenv("PORT")
-	cfg.CacheDSN = os.Getenv("CACHE_DNS")
+	cfg.CacheDSN = os.Getenv("CACHE_DSN")
+
 	cfg.DBString = os.Getenv("GOOSE_DBSTRING")
 	cfg.StartTime = time.Now()
 	flag.StringVar(&cfg.Env, "env", "dev", "set development environment")

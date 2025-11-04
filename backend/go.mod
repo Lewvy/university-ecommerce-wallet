@@ -45,6 +45,7 @@ require (
 	github.com/spf13/pflag v1.0.7 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/tetratelabs/wazero v1.9.0 // indirect
+	github.com/valkey-io/valkey-go v1.0.67
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.65.0 // indirect
 	github.com/wasilibs/go-pgquery v0.0.0-20250409022910-10ac41983c07 // indirect

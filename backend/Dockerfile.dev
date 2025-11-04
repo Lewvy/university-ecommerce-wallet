@@ -1,0 +1,17 @@
+FROM golang:1.25-alpine
+
+RUN apk add --no-cache make
+
+RUN go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+
+RUN go install github.com/pressly/goose/v3/cmd/goose@latest
+
+WORKDIR /app
+
+COPY go.mod go.sum Makefile ./
+COPY sql ./sql  
+COPY sqlc.yaml ./        
+
+RUN go mod download
+
+CMD make migrate && make run/live

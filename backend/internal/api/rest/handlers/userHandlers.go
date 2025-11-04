@@ -4,6 +4,8 @@ import (
 	"ecommerce/internal/api/rest"
 	"ecommerce/internal/dto"
 	"ecommerce/internal/service"
+	"ecommerce/internal/validator"
+	"errors"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
@@ -81,22 +83,29 @@ func (h *UserHandler) RegisterUserHandler(c *fiber.Ctx) error {
 	err := c.BodyParser(&userSignup)
 	if err != nil {
 		h.svc.Logger.Error("Error decoding", "err", err)
-		return err
-	}
-
-	validation_check, err := h.svc.Signup(userSignup)
-	if validation_check != nil {
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
-			"errors": validation_check,
+		return c.Status(http.StatusBadRequest).JSON(dto.ErrorResponse{
+			Code:    "bad_request",
+			Message: "Invalid request body",
 		})
 	}
+
+	user, err := h.svc.Signup(c.Context(), userSignup)
 	if err != nil {
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
-			"error": err.Error(),
+		var validationError *validator.ValidationError
+		if errors.As(err, &validationError) {
+			h.svc.Logger.Warn("User Validation Error", "error", validationError.Errors)
+			return c.Status(http.StatusBadRequest).JSON(dto.ErrorResponse{
+				Code:    "validation_error",
+				Message: "invalid details",
+				Fields:  validationError.Errors})
+		}
+
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"error": "An internal server error has occured",
 		})
 	}
 
-	return c.Status(http.StatusCreated).JSON(&userSignup, "application/json")
+	return c.Status(http.StatusCreated).JSON(&user, "application/json")
 }
 
 func (h *UserHandler) LoginUserHandler(c *fiber.Ctx) error {
@@ -114,7 +123,9 @@ func (h *UserHandler) LoginUserHandler(c *fiber.Ctx) error {
 
 	err = h.svc.Login(input)
 	if err != nil {
-		return err
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"error": "An internal server error has occured",
+		})
 	}
 
 	return c.Status(http.StatusOK).JSON(&input)

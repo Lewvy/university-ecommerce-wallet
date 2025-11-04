@@ -1,6 +1,6 @@
 # Change these variables as necessary.
 main_package_path = ./cmd/api
-binary_name = ecommerce
+binary_name = api 
 
 # ==================================================================================== #
 # HELPERS
@@ -63,7 +63,7 @@ tidy:
 ## build: build the application
 .PHONY: build
 build:
-	# Include additional build steps, like TypeScript, SCSS or Tailwind compilation here...
+	sqlc generate 
 	go build -o=/tmp/bin/${binary_name} ${main_package_path}
 
 ## run: run the  application
@@ -71,12 +71,17 @@ build:
 run: build
 	/tmp/bin/${binary_name}
 
+
+## migrate: migrate up
+.PHONY: migrate
+	goose up
+
 ## run/live: run the application with reloading on file changes
 .PHONY: run/live
 run/live:
 	go run github.com/cosmtrek/air@v1.43.0 \
 	--build.cmd "make build" --build.bin "/tmp/bin/${binary_name}" --build.delay "100" \
-	--build.exclude_dir "" \
+	--build.exclude_dir "internal/data/gen" \
 	--build.include_ext "go, tpl, tmpl, html, css, scss, js, ts, sql, jpeg, jpg, gif, png, bmp, svg, webp, ico" \
 	--misc.clean_on_exit "true"
 

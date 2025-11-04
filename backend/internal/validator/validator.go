@@ -14,6 +14,10 @@ type Validator struct {
 	Errors map[string]string
 }
 
+func (Validator) Error() string {
+	return "validation failed"
+}
+
 func New() *Validator {
 	return &Validator{Errors: make(map[string]string)}
 }

@@ -14,12 +14,12 @@ type Config struct {
 	StartTime time.Time
 	DBString  string
 	DB        *pgxpool.Pool
-	CacheDNS  string
+	CacheDSN  string
 }
 
 func NewConfig() (cfg Config) {
 	cfg.Port = os.Getenv("PORT")
-	cfg.CacheDNS = os.Getenv("CACHE_DNS")
+	cfg.CacheDSN = os.Getenv("CACHE_DNS")
 	cfg.DBString = os.Getenv("GOOSE_DBSTRING")
 	cfg.StartTime = time.Now()
 	flag.StringVar(&cfg.Env, "env", "dev", "set development environment")

@@ -4,25 +4,20 @@ import (
 	"ecommerce/internal/api/rest"
 	"ecommerce/internal/dto"
 	"ecommerce/internal/service"
-	"log/slog"
 	"net/http"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type UserHandler struct {
-	logger *slog.Logger
-	svc    service.UserService
+	svc *service.UserService
 }
 
-func UserRoutes(rh *rest.RestHandler) {
+func UserRoutes(rh *rest.RestHandler, userService *service.UserService) {
 	app := rh.App
 
-	svc := service.UserService{}
-
 	h := UserHandler{
-		logger: rh.Logger,
-		svc:    svc,
+		svc: userService,
 	}
 	app.Post("/register", h.RegisterUserHandler)
 	app.Post("/login", h.LoginUserHandler)
@@ -70,7 +65,7 @@ func (h *UserHandler) CreateCart(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) GetCart(c *fiber.Ctx) error {
-	h.logger.Info("message", "cart", "empty")
+	h.svc.Logger.Info("message", "cart", "empty")
 	return c.Status(http.StatusOK).JSON(map[string]string{
 		"message": "get cart",
 	})
@@ -82,29 +77,45 @@ func (h *UserHandler) GetProfile(c *fiber.Ctx) error {
 
 func (h *UserHandler) RegisterUserHandler(c *fiber.Ctx) error {
 	var input dto.UserSignup
+
 	err := c.BodyParser(&input)
 	if err != nil {
-		h.logger.Error("Error decoding", "err", err)
+		h.svc.Logger.Error("Error decoding", "err", err)
 		return err
 	}
 
 	validation_check, err := h.svc.Signup(input)
 	if validation_check != nil {
-		c.Status(http.StatusBadRequest).JSON(validation_check)
-		return nil
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"errors": validation_check,
+		})
 	}
 	if err != nil {
-		c.Status(http.StatusBadRequest).JSON(err)
-		return err
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
+
 	return c.Status(http.StatusCreated).JSON(&input, "application/text")
 }
 
 func (h *UserHandler) LoginUserHandler(c *fiber.Ctx) error {
-	var input struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+	var input dto.UserLogin
+
+	err := c.BodyParser(&input)
+	if err != nil {
+		h.svc.Logger.Error("Error decoding user", "err", err)
+		return c.Status(http.StatusBadRequest).JSON(
+			fiber.Map{
+				"error": "invalid email/password",
+			},
+		)
 	}
-	c.BodyParser(&input)
+
+	err = h.svc.Login(input)
+	if err != nil {
+		return err
+	}
+
 	return c.Status(http.StatusOK).JSON(&input)
 }

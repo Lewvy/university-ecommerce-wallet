@@ -1,39 +1,44 @@
 package main
 
 import (
-	"database/sql"
-	"ecommerce/cmd/api/handlers"
 	"ecommerce/internal/api"
 	"ecommerce/internal/config"
+	"ecommerce/internal/data"
+	"ecommerce/internal/data/gen"
 	"ecommerce/internal/logger"
-
-	// "ecommerce/internal/logger"
+	"ecommerce/internal/service"
 	"log/slog"
 
 	"github.com/joho/godotenv"
 )
 
-type application struct {
-	Cfg     config.Config
-	Logger  *slog.Logger
-	Handler *handlers.Handler
-	DB      *sql.DB
-}
-
 func main() {
-	godotenv.Load()
+	logger := logger.NewLogger()
+	slog.SetDefault(logger)
+
+	err := godotenv.Load()
+
+	if err != nil {
+		logger.Error("Error loading env", "err", err)
+	}
 
 	cfg := config.NewConfig()
-	api.SetupServer(&cfg, logger.NewLogger("dev"))
 
-	// cfg := config.NewConfig()
-	// l := logger.NewLogger(cfg.Env)
-	// h := handlers.New(&cfg, l)
+	dbPool, err := data.NewDBPool(cfg.DBString)
+	if err != nil {
+		logger.Error("Error connecting to the database", "err", err.Error())
+		return
+	}
+	defer dbPool.Close()
+	cfg.DB = dbPool
+	sqlcQueries := db.New(dbPool)
 
-	// app := &Application{
-	// 	Cfg:     cfg,
-	// 	Logger:  l,
-	// 	Handler: h,
-	// }
+	userStore := data.NewUserStore(sqlcQueries)
+	// walletStore := data.NewWalletStore(sqlcQueries)
+
+	userService := service.NewUserService(logger, userStore)
+	// walletService := service.NewWalletService(logger, walletStore)
+
+	api.SetupServer(&cfg, logger, userService)
 
 }

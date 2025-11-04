@@ -3,13 +3,19 @@ package logger
 import (
 	"log/slog"
 	"os"
+	"time"
+
+	"github.com/lmittmann/tint"
 )
 
-func NewLogger(env string) *slog.Logger {
-	switch env {
-	case "prod":
-		return slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	default:
-		return slog.New(slog.NewTextHandler(os.Stdout, nil))
-	}
+func NewLogger() *slog.Logger {
+	handler := tint.NewHandler(os.Stdout, &tint.Options{
+		Level:      slog.LevelDebug,
+		AddSource:  true,
+		TimeFormat: time.Kitchen,
+	})
+
+	logger := slog.New(handler)
+
+	return logger
 }

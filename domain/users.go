@@ -47,5 +47,4 @@ func validatePassword(pwd string, v *validator.Validator) {
 	v.Check(pwd != "", "password", "must be provided")
 	v.Check(len(pwd) >= 8, "password", "must be longer than 8 bytes")
 	v.Check(len(pwd) <= 50, "password", "must be less than 50 bytes")
-
 }

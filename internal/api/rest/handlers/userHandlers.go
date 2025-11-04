@@ -76,15 +76,15 @@ func (h *UserHandler) GetProfile(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) RegisterUserHandler(c *fiber.Ctx) error {
-	var input dto.UserSignup
+	var userSignup dto.UserSignup
 
-	err := c.BodyParser(&input)
+	err := c.BodyParser(&userSignup)
 	if err != nil {
 		h.svc.Logger.Error("Error decoding", "err", err)
 		return err
 	}
 
-	validation_check, err := h.svc.Signup(input)
+	validation_check, err := h.svc.Signup(userSignup)
 	if validation_check != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"errors": validation_check,
@@ -96,7 +96,7 @@ func (h *UserHandler) RegisterUserHandler(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.Status(http.StatusCreated).JSON(&input, "application/text")
+	return c.Status(http.StatusCreated).JSON(&userSignup, "application/json")
 }
 
 func (h *UserHandler) LoginUserHandler(c *fiber.Ctx) error {

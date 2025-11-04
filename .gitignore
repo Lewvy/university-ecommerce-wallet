@@ -1,4 +1,4 @@
-*.env
+backend/*.env
 node_modules/
 tmp/
-ca.pem
+backend/ca.pem

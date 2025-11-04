@@ -1,7 +1,4 @@
-# docker-compose.yml
-
 services:
-  # The PostgreSQL Database Service
   db:
     image: postgres:18-alpine
     restart: always

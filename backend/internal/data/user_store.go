@@ -2,10 +2,7 @@ package data
 
 import (
 	"context"
-	"database/sql"
-	"ecommerce/domain"
 	db "ecommerce/internal/data/gen"
-	"errors"
 )
 
 type UserStore interface {

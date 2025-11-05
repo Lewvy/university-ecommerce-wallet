@@ -7,7 +7,9 @@ import (
 	"ecommerce/internal/data"
 	"ecommerce/internal/data/gen"
 	"ecommerce/internal/logger"
+	"ecommerce/internal/mailer"
 	"ecommerce/internal/service"
+	"ecommerce/internal/worker"
 	"log/slog"
 
 	"github.com/joho/godotenv"
@@ -24,7 +26,15 @@ func main() {
 		return
 	}
 
-	cfg := config.NewConfig()
+	cfg, err := config.NewConfig()
+	if err != nil {
+		logger.Error("Error loading config", "error", err)
+	}
+
+	mailer, err := mailer.New(cfg.MailerHost, cfg.MailerPort, cfg.MailerUsername, cfg.MailerPassword, cfg.MailerSender)
+	if err != nil {
+		logger.Error("Error creating the mailer service", "error", err)
+	}
 
 	cacheClient, err := cache.NewValkeyCache()
 	if err != nil {
@@ -41,6 +51,7 @@ func main() {
 	cfg.DB = dbPool
 	sqlcQueries := db.New(dbPool)
 
+	worker.NewWorkerPool(mailer, cacheClient)
 	userStore := data.NewUserStore(sqlcQueries)
 	// walletStore := data.NewWalletStore(sqlcQueries)
 

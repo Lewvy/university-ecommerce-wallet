@@ -26,12 +26,11 @@ func main() {
 
 	cfg := config.NewConfig()
 
-	cacheClient, err := cache.New()
+	cacheClient, err := cache.NewValkeyCache()
 	if err != nil {
 		logger.Error("Error loading cache", "error", err)
 		return
 	}
-	_ = cacheClient
 
 	dbPool, err := data.NewDBPool(cfg.DBString)
 	if err != nil {
@@ -45,7 +44,7 @@ func main() {
 	userStore := data.NewUserStore(sqlcQueries)
 	// walletStore := data.NewWalletStore(sqlcQueries)
 
-	userService := service.NewUserService(logger, userStore)
+	userService := service.NewUserService(logger, userStore, cacheClient)
 	// walletService := service.NewWalletService(logger, walletStore)
 
 	api.SetupServer(&cfg, logger, userService)

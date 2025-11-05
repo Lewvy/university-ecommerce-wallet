@@ -1,0 +1,133 @@
+package service
+
+import (
+	"context"
+	"ecommerce/domain"
+	"ecommerce/internal/cache"
+	"ecommerce/internal/data"
+	db "ecommerce/internal/data/gen"
+	"ecommerce/internal/dto"
+	"ecommerce/internal/password"
+	"ecommerce/internal/token"
+	"ecommerce/internal/worker"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"time"
+)
+
+type UserService struct {
+	Logger *slog.Logger
+	Store  data.UserStore
+	Cache  cache.TokenCache
+}
+
+func NewUserService(logger *slog.Logger, store data.UserStore, cache cache.TokenCache) *UserService {
+	return &UserService{
+		Logger: logger,
+		Store:  store,
+		Cache:  cache,
+	}
+}
+
+func (s UserService) FindUserByEmail(email string) (*domain.User, error) {
+	return nil, nil
+}
+
+func (s UserService) Login(input dto.UserLogin) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	user, err := s.Store.GetUserAuthByEmail(ctx, input.Email)
+
+	s.Logger.Info("user logged in", "user", map[string]any{"name": user.Name})
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
+func (s UserService) Signup(ctx context.Context, input dto.UserSignup) (*domain.User, error) {
+	err := validateUser(input.Email, input.Password, input.Phone)
+	if err != nil {
+		return nil, err
+	}
+
+	password_hash, err := password.GeneratePasswordHash(input.Password)
+
+	if err != nil {
+		return nil, err
+	}
+
+	user := db.CreateUserParams{
+		Name:         input.Name,
+		Email:        input.Email,
+		PasswordHash: password_hash,
+	}
+
+	dbUser, err := s.Store.CreateUser(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	resUser := &domain.User{
+		Email: dbUser.Email,
+		Name:  dbUser.Name,
+	}
+
+	s.sendToken(ctx, dbUser.ID)
+
+	s.Logger.Info("User created successfully", "user_id", resUser.ID, "user_email", resUser.Email)
+
+	return resUser, nil
+
+}
+
+func (s UserService) sendToken(ctx context.Context, id int32) {
+
+	expiry := time.Minute * 15
+	token, err := token.GenerateVerificationToken(int64(id), expiry, token.ScopeActivation)
+	if err != nil {
+		s.Logger.Error("Error generating token", "error", err)
+		return
+	}
+
+	err = s.Cache.SetVerificationToken(ctx, string(token.Hash), int64(id), expiry)
+	if err != nil {
+		s.Logger.Error("Error saving token to cache", "error", err)
+	}
+}
+
+const EmailQueueKey = "queue:emails"
+
+type VerificationData struct {
+	Name  string `json:"name"`
+	Token string `json:"token"`
+}
+
+func (s UserService) queueVerificationEmail(ctx context.Context, userEmail string, firstName string, tokenPlaintext string) error {
+	data := VerificationData{
+		Name:  firstName,
+		Token: tokenPlaintext,
+	}
+
+	job := worker.MailJob{
+		Recipient:    userEmail,
+		TemplateFile: "verification.tmpl",
+		TemplateData: data,
+	}
+
+	jobJSON, err := json.Marshal(job)
+	if err != nil {
+		s.Logger.Error("Failed to serialize mail job", "error", err)
+		return fmt.Errorf("failed to serialize mail job: %w", err)
+	}
+
+	if err != nil {
+		s.Logger.Error("Failed to LPUSH mail job to Valkey", "error", err)
+		return fmt.Errorf("failed to enqueue email job to valkey: %w", err)
+	}
+
+	return nil
+}

@@ -1,20 +1,13 @@
 package cache
 
 import (
-	// "context"
-	"os"
-
-	"github.com/valkey-io/valkey-go"
+	"context"
+	"time"
 )
 
-func New() (valkey.Client, error) {
-	address, err := valkey.ParseURL(os.Getenv("CACHE_DSN"))
-	if err != nil {
-		return nil, err
-	}
-	client, err := valkey.NewClient(address)
-	if err != nil {
-		return nil, err
-	}
-	return client, nil
+type Cache interface {
+	SetVerificationToken(ctx context.Context, tokenHash string, userID int64, expiry time.Duration) error
+	AddEmailToQueue(ctx context.Context, email, data string) error
+	GetUserIDByToken(ctx context.Context, tokenHash string) (int64, error)
+	DeleteToken(ctx context.Context, tokenHash string) error
 }

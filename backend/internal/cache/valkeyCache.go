@@ -16,10 +16,8 @@ type ValkeyCache struct {
 	Client valkey.Client
 }
 
-// for adding verification token in the cache
 func (v *ValkeyCache) SetVerificationToken(ctx context.Context, tokenHash []byte, userID int64, expiry time.Duration) error {
 	userIDstr := strconv.FormatInt(userID, 10)
-	//takes in a tokenhash string
 
 	encodedHash := base64.RawStdEncoding.EncodeToString(tokenHash)
 

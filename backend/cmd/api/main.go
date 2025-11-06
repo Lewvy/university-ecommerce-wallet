@@ -51,7 +51,9 @@ func main() {
 	cfg.DB = dbPool
 	sqlcQueries := db.New(dbPool)
 
-	worker.NewWorkerPool(mailer, cacheClient)
+	workers := worker.NewWorkerPool(mailer, cacheClient, logger, true)
+	workers.StartQueueMonitor()
+	workers.StartEmailWorkers(1)
 	userStore := data.NewUserStore(sqlcQueries)
 	// walletStore := data.NewWalletStore(sqlcQueries)
 

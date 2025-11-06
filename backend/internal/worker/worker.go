@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,9 +20,12 @@ type MailJob struct {
 	TemplateData any    `json:"template_data"`
 }
 
-const EmailQueueKey = "queue:emails"
-const MaxWorkers = 50
-const ScaleUpThreshold = 20
+const (
+	EmailQueueKey     = "queue:emails"
+	MaxWorkers        = 50
+	ScaleUpThreshold  = 20
+	ScaleDownCooldown = 10 * time.Second
+)
 
 type WorkerPool struct {
 	Mailer        *mailer.Mailer
@@ -31,16 +35,17 @@ type WorkerPool struct {
 	ActiveWorkers int64
 	stopSignal    chan struct{}
 	Logger        *slog.Logger
+	TestMode      bool
 }
 
-func NewWorkerPool(m *mailer.Mailer, c *cache.ValkeyCache) *WorkerPool {
+func NewWorkerPool(m *mailer.Mailer, c *cache.ValkeyCache, l *slog.Logger, t bool) *WorkerPool {
 	return &WorkerPool{
 		Mailer:        m,
-		mu:            sync.Mutex{},
 		Cache:         c,
-		ActiveWorkers: 0,
 		stopSignal:    make(chan struct{}),
 		cancelWorkers: make([]chan struct{}, 0),
+		Logger:        l,
+		TestMode:      t,
 	}
 }
 
@@ -59,58 +64,69 @@ func (p *WorkerPool) Stop() {
 		close(ch)
 	}
 	p.cancelWorkers = nil
-	p.Logger.Info("WorkerPool stopped cleanly.")
+	p.Logger.Info("WorkerPool stopped")
 }
 
 func (p *WorkerPool) StartQueueMonitor() {
 	go func() {
-		ticker := time.NewTicker(10 * time.Second)
+		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
-		monitorBaseCtx := context.Background()
+		var lastScaleDown time.Time
+		bgctx := context.Background()
+
+		prevQueueLength := 0
+		prevActiveWorkers := 1
 
 		for {
 			select {
 			case <-p.stopSignal:
 				return
-
 			case <-ticker.C:
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				queueLength, err := p.Cache.Client.Do(ctx, p.Cache.Client.B().Llen().Key(EmailQueueKey).Build()).AsInt64()
+				ctx, cancel := context.WithTimeout(bgctx, 5*time.Second)
+				queueLength, err := p.Cache.Client.Do(
+					ctx, p.Cache.Client.B().Llen().Key(EmailQueueKey).Build()).AsInt64()
 				cancel()
 
+				active := atomic.LoadInt64(&p.ActiveWorkers)
+				if prevQueueLength != int(queueLength) || prevActiveWorkers != int(active) {
+					p.Logger.Info("Monitoring queue length", "length", queueLength, "current_active_workers", active)
+					prevQueueLength = int(queueLength)
+					prevActiveWorkers = int(active)
+				}
+
 				if err != nil {
-					p.Logger.Log(monitorBaseCtx, slog.LevelError, "Error fetching length of the queue", "err", err)
+					p.Logger.Error("Error fetching queue length", "err", err)
 					continue
 				}
 
-				currentWorkers := atomic.LoadInt64(&p.ActiveWorkers)
-
-				if queueLength > ScaleUpThreshold && currentWorkers < MaxWorkers {
+				if queueLength > ScaleUpThreshold && active < MaxWorkers {
 					workersToDeploy := 5
-
-					p.Logger.Log(monitorBaseCtx, slog.LevelInfo, "Scaling UP triggered.",
-						"queue_size", queueLength,
-						"current_workers", currentWorkers,
-						"deploying", workersToDeploy)
-
+					p.Logger.Info("Scaling UP", "queue_size", queueLength, "current_workers", active, "deploying", workersToDeploy)
 					p.StartEmailWorkers(workersToDeploy)
 				}
 
-				if queueLength <= 5 && currentWorkers > 5 {
-					workersToStop := int(currentWorkers - 5)
+				if queueLength <= 5 && active > 5 {
+					if time.Since(lastScaleDown) < ScaleDownCooldown {
+						continue
+					}
+					lastScaleDown = time.Now()
+
 					p.mu.Lock()
-					channelsToClose := p.cancelWorkers[len(p.cancelWorkers)-workersToStop:]
-					p.cancelWorkers = p.cancelWorkers[:len(p.cancelWorkers)-workersToStop]
-					p.mu.Unlock()
+					workersToStop := min(int(active-5), len(p.cancelWorkers))
+					if workersToStop > 0 {
+						channelsToClose := p.cancelWorkers[len(p.cancelWorkers)-workersToStop:]
+						p.cancelWorkers = p.cancelWorkers[:len(p.cancelWorkers)-workersToStop]
+						p.mu.Unlock()
 
-					p.Logger.Info("Scaling down:", "Queue size", queueLength, "Stopping workers...", workersToStop)
-
-					for _, ch := range channelsToClose {
-						close(ch)
+						p.Logger.Info("Scaling DOWN", "queue_size", queueLength, "stopping_workers", workersToStop)
+						for _, ch := range channelsToClose {
+							close(ch)
+						}
+					} else {
+						p.mu.Unlock()
 					}
 				}
-
 			}
 		}
 	}()
@@ -123,47 +139,61 @@ func (p *WorkerPool) StartEmailWorkers(numWorkers int) {
 		p.mu.Lock()
 		p.cancelWorkers = append(p.cancelWorkers, workerCancelChan)
 		p.mu.Unlock()
-		go p.RunEmailWorker(workerCancelChan)
 
+		go p.RunEmailWorker(workerCancelChan)
 	}
 }
 
 func (p *WorkerPool) RunEmailWorker(workerCancelChan chan struct{}) {
 	id := atomic.AddInt64(&p.ActiveWorkers, 1)
+	if p.TestMode {
+		time.Sleep(2 * time.Second)
+	}
 	defer func() {
 		atomic.AddInt64(&p.ActiveWorkers, -1)
 		p.removeWorkerCancelChan(workerCancelChan)
 	}()
 
 	baseCtx, baseCancel := context.WithCancel(context.Background())
-	defer baseCancel()
+
 	go func() {
 		select {
 		case <-workerCancelChan:
 			baseCancel()
-			p.Logger.Info("Worker received SCALE-DOWN signal. Exiting.", "worker_id", id)
-			return
+			p.Logger.Info("Worker received scale down signal... Exiting", "worker_id", id)
 		case <-p.stopSignal:
 			baseCancel()
-			p.Logger.Warn("Worker received shutdown signal.", "worker_id", id)
-			return
+			p.Logger.Warn("Worker received shutdown signal", "worker_id", id)
 		}
 	}()
-	backoff := 1 * time.Second
-	maxBackoff := 30 * time.Second
+
+	delay := 1 * time.Second
+
 	for {
-		ctx, cancel := context.WithTimeout(baseCtx, 10*time.Second)
-		res := p.Cache.Client.Do(ctx, p.Cache.Client.B().Brpop().Key(EmailQueueKey).Timeout(0).Build())
+		select {
+		case <-baseCtx.Done():
+			return
+		default:
+		}
+
+		ctx, cancel := context.WithTimeout(baseCtx, 5*time.Second)
+		res := p.Cache.Client.Do(ctx, p.Cache.Client.B().Brpop().Key(EmailQueueKey).Timeout(2).Build())
 		cancel()
 
 		if err := res.Error(); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return
+			}
 			if errors.Is(err, context.DeadlineExceeded) {
 				continue
 			}
+			if strings.Contains(err.Error(), "nil message") {
+				continue
+			}
 			p.Logger.Error("Valkey BRPOP error. Retrying...", "error", err, "worker_id", id)
-			time.Sleep(backoff * time.Second)
-			if backoff < maxBackoff {
-				backoff *= 2
+			time.Sleep(delay)
+			if delay < 30*time.Second {
+				delay *= 2
 			}
 			continue
 		}
@@ -174,20 +204,22 @@ func (p *WorkerPool) RunEmailWorker(workerCancelChan chan struct{}) {
 			continue
 		}
 
-		jobJSON := elements[1]
-
 		var job MailJob
-		if err := json.Unmarshal([]byte(jobJSON), &job); err != nil {
-			p.Logger.Error("Failed to unmarshal job JSON.",
-				"job skipped", jobJSON, "worker_id", id)
+		if err := json.Unmarshal([]byte(elements[1]), &job); err != nil {
+			p.Logger.Error("Failed to unmarshal job JSON", "job_skipped", elements[1], "worker_id", id)
+			continue
+		}
+
+		if p.TestMode {
+			time.Sleep(2 * time.Second)
+			p.Logger.Info("Successfully sent mail", "recipient", job.Recipient, "worker_id", id)
 			continue
 		}
 
 		if err := p.Mailer.Send(job.Recipient, job.TemplateFile, job.TemplateData); err != nil {
-			p.Logger.Error("Final delivery mail failed", "recipient",
-				job.Recipient, "template", job.TemplateFile, "error", err)
+			p.Logger.Error("Final delivery mail failed", "recipient", job.Recipient, "template", job.TemplateFile, "error", err, "worker_id", id)
 		} else {
-			p.Logger.Info("Successfully sent mail", "recipient", job.Recipient)
+			p.Logger.Info("Successfully sent mail", "recipient", job.Recipient, "worker_id", id)
 		}
 	}
 }

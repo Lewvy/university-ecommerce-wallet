@@ -93,7 +93,8 @@ func (s UserService) sendToken(ctx context.Context, id int32, email string, name
 		return
 	}
 
-	err = s.Cache.SetVerificationToken(ctx, string(token.Hash), int64(id), expiry)
+	//sends the token to be added in the cache
+	err = s.Cache.SetVerificationToken(ctx, token.Hash, int64(id), expiry)
 	if err != nil {
 		s.Logger.Error("Error saving token to cache", "error", err)
 		return
@@ -117,7 +118,7 @@ func (s UserService) queueVerificationEmail(ctx context.Context, userEmail strin
 
 	job := worker.MailJob{
 		Recipient:    userEmail,
-		TemplateFile: "verification.tmpl",
+		TemplateFile: "user_templates.tmpl",
 		TemplateData: data,
 	}
 

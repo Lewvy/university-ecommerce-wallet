@@ -5,7 +5,7 @@ type UserLogin struct {
 	Password string `json:"password"`
 }
 
-type UserUpdate struct {
+type UserEmailUpdate struct {
 	Email        string `json:"email"`
 	UpdatedEmail string `json:"updated_email"`
 }

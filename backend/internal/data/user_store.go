@@ -18,6 +18,10 @@ type sqlUserStore struct {
 func (s *sqlUserStore) GetUserAuthByEmail(ctx context.Context, email string) (db.GetUserAuthByEmailRow, error) {
 	return s.q.GetUserAuthByEmail(ctx, email)
 }
+
+func (s *sqlUserStore) VerifyUserEmail(ctx context.Context, id int32) error {
+	return s.q.VerifyUserEmail(ctx, id)
+}
 func (s *sqlUserStore) CreateUser(ctx context.Context, arg db.CreateUserParams) (_ db.User, _ error) {
 	return s.q.CreateUser(ctx, arg)
 }

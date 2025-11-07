@@ -3,6 +3,7 @@ package token
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"ecommerce/internal/validator"
 	"encoding/base64"
 	"math/big"
@@ -65,6 +66,11 @@ func GenerateAccessToken(userID int64, ttl time.Duration, scope string) (*Token,
 
 	token.Hash = generateTokenHash(token.Plaintext)
 	return token, nil
+}
+
+func MatchToken(token string, tokenHash []byte) bool {
+	userTokenHash := generateTokenHash(token)
+	return subtle.ConstantTimeCompare(userTokenHash, tokenHash) == 1
 }
 
 func GenerateVerificationToken(userID int64, ttl time.Duration, scope string) (*Token, error) {

@@ -40,6 +40,7 @@ func (s *UserService) VerifyUser(ctx context.Context, input *UserVerification) e
 		s.Logger.Error("Error decoding token", "error", err)
 		return err
 	}
+
 	if match {
 		err := s.Store.VerifyUserEmail(ctx, input.ID)
 		if err != nil {

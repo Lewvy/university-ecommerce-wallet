@@ -10,6 +10,7 @@ type UserStore interface {
 	CreateUser(ctx context.Context, arg db.CreateUserParams) (db.User, error)
 	GetUserByID(ctx context.Context, id int) (db.GetUserByIDRow, error)
 	VerifyUserEmail(ctx context.Context, id int) error
+	UpdateUserEmail(ctx context.Context, id int, updated_email string) error
 }
 
 type sqlUserStore struct {
@@ -28,6 +29,16 @@ func (s *sqlUserStore) CreateUser(ctx context.Context, arg db.CreateUserParams) 
 }
 func (s *sqlUserStore) GetUserByID(ctx context.Context, id int) (_ db.GetUserByIDRow, _ error) {
 	return s.q.GetUserByID(ctx, int32(id))
+}
+
+func (s *sqlUserStore) UpdateUserEmail(ctx context.Context, id int, updated_email string) error {
+	params := db.UpdateUserEmailParams{
+		Email: updated_email,
+		ID:    int32(id),
+	}
+
+	return s.q.UpdateUserEmail(ctx, params)
+
 }
 
 func NewUserStore(queries *db.Queries) UserStore {

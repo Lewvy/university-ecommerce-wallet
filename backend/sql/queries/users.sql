@@ -31,6 +31,13 @@ SET
   updated_at = CURRENT_TIMESTAMP
 WHERE id = $1;
 
+--name: UpdateUserEmail :exec
+Update users
+Set
+	email = $1,
+	updated_at = CURRENT_TIMESTAMP
+where id = $2
+
 -- name: UpdateUserProfile :one
 UPDATE users
 SET 

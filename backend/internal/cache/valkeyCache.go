@@ -58,7 +58,7 @@ func (v *ValkeyCache) AddEmailToQueue(ctx context.Context, email, jobJSON string
 	return err
 }
 
-func (v *ValkeyCache) GetUserIDByToken(ctx context.Context, tokenHash string) (int64, error) {
+func (v *ValkeyCache) GetUserIDByTokenHash(ctx context.Context, tokenHash string) (int64, error) {
 	id, err := v.Client.Do(ctx, v.Client.B().Get().Key(tokenHash).Build()).AsInt64()
 
 	if err != nil {
@@ -71,7 +71,7 @@ func (v *ValkeyCache) GetUserIDByToken(ctx context.Context, tokenHash string) (i
 	return id, nil
 }
 func (v *ValkeyCache) DeleteToken(ctx context.Context, tokenHash string) error {
-	id, err := v.GetUserIDByToken(ctx, tokenHash)
+	id, err := v.GetUserIDByTokenHash(ctx, tokenHash)
 
 	if err != nil {
 		if valkey.IsValkeyNil(err) || err.Error() == "verification token not found or expired" {

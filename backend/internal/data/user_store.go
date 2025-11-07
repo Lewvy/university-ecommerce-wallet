@@ -9,6 +9,7 @@ type UserStore interface {
 	GetUserAuthByEmail(ctx context.Context, email string) (db.GetUserAuthByEmailRow, error)
 	CreateUser(ctx context.Context, arg db.CreateUserParams) (db.User, error)
 	GetUserByID(ctx context.Context, id int) (db.GetUserByIDRow, error)
+	VerifyUserEmail(ctx context.Context, id int) error
 }
 
 type sqlUserStore struct {
@@ -19,8 +20,8 @@ func (s *sqlUserStore) GetUserAuthByEmail(ctx context.Context, email string) (db
 	return s.q.GetUserAuthByEmail(ctx, email)
 }
 
-func (s *sqlUserStore) VerifyUserEmail(ctx context.Context, id int32) error {
-	return s.q.VerifyUserEmail(ctx, id)
+func (s *sqlUserStore) VerifyUserEmail(ctx context.Context, id int) error {
+	return s.q.VerifyUserEmail(ctx, int32(id))
 }
 func (s *sqlUserStore) CreateUser(ctx context.Context, arg db.CreateUserParams) (_ db.User, _ error) {
 	return s.q.CreateUser(ctx, arg)

@@ -22,11 +22,27 @@ type UserService struct {
 	Cache  cache.Cache
 }
 
-func (s *UserService) VerifyUser(input struct {
-	Email string "json:\"email\""
-	Token string "json:\"token\""
-}) {
+type UserVerification struct {
+	// Email string `json:"email"`
+	ID    int    `json:"id"`
+	Token string `json:"token"`
+}
 
+func (s *UserService) VerifyUser(ctx context.Context, input *UserVerification) (bool, error) {
+
+	tokenHash, err := s.Cache.GetTokenHashByUserID(ctx, int64(input.ID))
+	if err != nil {
+		s.Logger.Error("Error getting token", "error", err)
+		return false, err
+	}
+	token, match := token.MatchToken(input.Token, tokenHash)
+	hash_stored := tokenHash
+	s.Logger.Info("Token", "plainntext", input.Token, "hash_generated", token, "hash_stored", hash_stored)
+	if match {
+		return true, nil
+	} else {
+		return false, fmt.Errorf("invalid token")
+	}
 }
 
 func NewUserService(logger *slog.Logger, store data.UserStore, cache cache.Cache) *UserService {
@@ -116,10 +132,12 @@ func (s UserService) sendToken(ctx context.Context, id int32, email string, name
 		s.Logger.Error("Error saving token to cache", "error", err)
 		return
 	}
+	s.Logger.Info("sending token", "user_email", email, "token", token.Plaintext)
 	if err := s.queueVerificationEmail(ctx, email, name, id, token.Plaintext); err != nil {
 		s.Logger.Error("Error saving token to cache", "error", err)
 		return
 	}
+
 }
 
 type VerificationData struct {

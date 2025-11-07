@@ -22,6 +22,13 @@ type UserService struct {
 	Cache  cache.Cache
 }
 
+func (s *UserService) VerifyUser(input struct {
+	Email string "json:\"email\""
+	Token string "json:\"token\""
+}) {
+
+}
+
 func NewUserService(logger *slog.Logger, store data.UserStore, cache cache.Cache) *UserService {
 	return &UserService{
 		Logger: logger,
@@ -50,13 +57,13 @@ func (s UserService) Login(input dto.UserLogin) error {
 }
 
 func (s UserService) Signup(ctx context.Context, input dto.UserSignup) (*domain.User, error) {
+	var password_hash []byte
+
 	err := validateUser(input.Email, input.Password, input.Phone)
 	if err != nil {
 		return nil, err
 	}
-
-	password_hash, err := password.GeneratePasswordHash(input.Password)
-
+	password_hash, err = password.GeneratePasswordHash(input.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -67,11 +74,22 @@ func (s UserService) Signup(ctx context.Context, input dto.UserSignup) (*domain.
 		PasswordHash: password_hash,
 	}
 
-	dbUser, err := s.Store.CreateUser(ctx, user)
+	var dbUser db.User
+	// if os.Getenv("ENABLE_FAST_VALIDATION") == "true" {
+	// 	s.Logger.Info("User created successfully", "user_email", user.Email)
+	//
+	// 	resUser := &domain.User{
+	// 		Email: user.Email,
+	// 		Name:  user.Name,
+	// 	}
+	// 	return resUser, nil
+	// }
+	dbUser, err = s.Store.CreateUser(ctx, user)
 	if err != nil {
 		return nil, err
 	}
 	resUser := &domain.User{
+		ID:    uint64(dbUser.ID),
 		Email: dbUser.Email,
 		Name:  dbUser.Name,
 	}
@@ -93,27 +111,28 @@ func (s UserService) sendToken(ctx context.Context, id int32, email string, name
 		return
 	}
 
-	//sends the token to be added in the cache
 	err = s.Cache.SetVerificationToken(ctx, token.Hash, int64(id), expiry)
 	if err != nil {
 		s.Logger.Error("Error saving token to cache", "error", err)
 		return
 	}
-	if err := s.queueVerificationEmail(ctx, email, name, token.Plaintext); err != nil {
+	if err := s.queueVerificationEmail(ctx, email, name, id, token.Plaintext); err != nil {
 		s.Logger.Error("Error saving token to cache", "error", err)
 		return
 	}
 }
 
 type VerificationData struct {
+	ID    int32  `json:"ID"`
+	Token string `json:"activationToken"`
 	Name  string `json:"name"`
-	Token string `json:"token"`
 }
 
-func (s UserService) queueVerificationEmail(ctx context.Context, userEmail string, firstName string, tokenPlaintext string) error {
+func (s UserService) queueVerificationEmail(ctx context.Context, userEmail, name string, id int32, tokenPlaintext string) error {
 	data := VerificationData{
-		Name:  firstName,
+		ID:    id,
 		Token: tokenPlaintext,
+		Name:  name,
 	}
 
 	job := worker.MailJob{

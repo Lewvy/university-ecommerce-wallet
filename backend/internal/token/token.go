@@ -69,14 +69,14 @@ func GenerateAccessToken(userID int64, ttl time.Duration, scope string) (*Token,
 	return token, nil
 }
 
-func MatchToken(token string, tokenHash string) (string, bool) {
+func MatchToken(token string, tokenHash string) (bool, error) {
 	userTokenHash := generateTokenHash(token)
 	v, err := hex.DecodeString(tokenHash)
 	if err != nil {
-		return "", false
+		return false, err
 	}
 
-	return hex.EncodeToString(userTokenHash), subtle.ConstantTimeCompare(userTokenHash, v) == 1
+	return subtle.ConstantTimeCompare(userTokenHash, v) == 1, nil
 }
 
 func GenerateVerificationToken(userID int64, ttl time.Duration, scope string) (*Token, error) {

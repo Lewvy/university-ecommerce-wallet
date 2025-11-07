@@ -12,6 +12,7 @@ SELECT id, name, password_hash
 FROM users 
 WHERE email = $1;
 
+
 -- name: GetUserByID :one
 -- Gets a user's public profile data
 SELECT id, name, email, upi_id, email_verified, created_at, version

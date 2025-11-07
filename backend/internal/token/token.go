@@ -35,10 +35,6 @@ func (t *Token) ValidateVerificationToken(v *validator.ValidationError, tokenPla
 	return v
 }
 
-func (t *Token) SetVerificationToken(token *Token) error {
-	panic("unimplememted")
-}
-
 func (t *Token) DeleteToken(scope string, userID int64) error {
 	panic("unimplememted")
 

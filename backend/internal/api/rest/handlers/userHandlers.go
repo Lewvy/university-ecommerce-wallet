@@ -63,7 +63,7 @@ func (h *UserHandler) Verify(c *fiber.Ctx) error {
 			"error": "invalid request body",
 		})
 	}
-	_, err = h.svc.VerifyUser(c.Context(), input)
+	err = h.svc.VerifyUser(c.Context(), input)
 	if err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"error": "invalid token",
@@ -72,7 +72,6 @@ func (h *UserHandler) Verify(c *fiber.Ctx) error {
 	return c.Status(http.StatusCreated).JSON(fiber.Map{
 		"message": "user verified",
 	})
-
 }
 
 func (h *UserHandler) CreateProfile(c *fiber.Ctx) error {

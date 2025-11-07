@@ -28,20 +28,27 @@ type UserVerification struct {
 	Token string `json:"token"`
 }
 
-func (s *UserService) VerifyUser(ctx context.Context, input *UserVerification) (bool, error) {
+func (s *UserService) VerifyUser(ctx context.Context, input *UserVerification) error {
 
 	tokenHash, err := s.Cache.GetTokenHashByUserID(ctx, int64(input.ID))
 	if err != nil {
 		s.Logger.Error("Error getting token", "error", err)
-		return false, err
+		return err
 	}
-	token, match := token.MatchToken(input.Token, tokenHash)
-	hash_stored := tokenHash
-	s.Logger.Info("Token", "plainntext", input.Token, "hash_generated", token, "hash_stored", hash_stored)
+	match, err := token.MatchToken(input.Token, tokenHash)
+	if err != nil {
+		s.Logger.Error("Error decoding token", "error", err)
+		return err
+	}
 	if match {
-		return true, nil
+		err := s.Store.VerifyUserEmail(ctx, input.ID)
+		if err != nil {
+			s.Logger.Error("Error updating email verification", "error", err, "user_id", input.ID)
+			return err
+		}
+		return nil
 	} else {
-		return false, fmt.Errorf("invalid token")
+		return fmt.Errorf("invalid token")
 	}
 }
 

@@ -17,7 +17,7 @@ INSERT INTO users (
 ) VALUES (
   $1, $2, $3
 )
-RETURNING id, name, email, password_hash, upi_id, created_at, updated_at, email_verified, user_type, version
+RETURNING id, name, email, password_hash, upi_id, phone_number, created_at, updated_at, email_verified, user_type, version
 `
 
 type CreateUserParams struct {
@@ -35,6 +35,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Email,
 		&i.PasswordHash,
 		&i.UpiID,
+		&i.PhoneNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EmailVerified,
@@ -65,7 +66,7 @@ func (q *Queries) GetUserAuthByEmail(ctx context.Context, email string) (GetUser
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, password_hash, upi_id, created_at, updated_at, email_verified, user_type, version FROM users
+SELECT id, name, email, password_hash, upi_id, phone_number, created_at, updated_at, email_verified, user_type, version FROM users
 WHERE email = $1
 `
 
@@ -79,6 +80,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Email,
 		&i.PasswordHash,
 		&i.UpiID,
+		&i.PhoneNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EmailVerified,
@@ -128,7 +130,7 @@ SET
   updated_at = CURRENT_TIMESTAMP,
   version = version + 1
 WHERE id = $3 AND version = $4
-RETURNING id, name, email, password_hash, upi_id, created_at, updated_at, email_verified, user_type, version
+RETURNING id, name, email, password_hash, upi_id, phone_number, created_at, updated_at, email_verified, user_type, version
 `
 
 type UpdateUserProfileParams struct {
@@ -152,6 +154,7 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.Email,
 		&i.PasswordHash,
 		&i.UpiID,
+		&i.PhoneNumber,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.EmailVerified,

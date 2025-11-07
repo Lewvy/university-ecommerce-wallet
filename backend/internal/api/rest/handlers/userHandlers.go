@@ -55,7 +55,24 @@ func (h *UserHandler) GetOrder(c *fiber.Ctx) error {
 }
 
 func (h *UserHandler) Verify(c *fiber.Ctx) error {
-	return nil
+	input := &service.UserVerification{}
+	err := c.BodyParser(&input)
+	if err != nil {
+		h.svc.Logger.Error("Error decoding request body", "error", err)
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"error": "invalid request body",
+		})
+	}
+	_, err = h.svc.VerifyUser(c.Context(), input)
+	if err != nil {
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"error": "invalid token",
+		})
+	}
+	return c.Status(http.StatusCreated).JSON(fiber.Map{
+		"message": "user verified",
+	})
+
 }
 
 func (h *UserHandler) CreateProfile(c *fiber.Ctx) error {

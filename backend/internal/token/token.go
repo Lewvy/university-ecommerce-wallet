@@ -6,6 +6,7 @@ import (
 	"crypto/subtle"
 	"ecommerce/internal/validator"
 	"encoding/base64"
+	"encoding/hex"
 	"math/big"
 	"strconv"
 	"time"
@@ -68,9 +69,14 @@ func GenerateAccessToken(userID int64, ttl time.Duration, scope string) (*Token,
 	return token, nil
 }
 
-func MatchToken(token string, tokenHash []byte) bool {
+func MatchToken(token string, tokenHash string) (string, bool) {
 	userTokenHash := generateTokenHash(token)
-	return subtle.ConstantTimeCompare(userTokenHash, tokenHash) == 1
+	v, err := hex.DecodeString(tokenHash)
+	if err != nil {
+		return "", false
+	}
+
+	return hex.EncodeToString(userTokenHash), subtle.ConstantTimeCompare(userTokenHash, v) == 1
 }
 
 func GenerateVerificationToken(userID int64, ttl time.Duration, scope string) (*Token, error) {

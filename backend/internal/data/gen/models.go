@@ -14,6 +14,7 @@ type User struct {
 	Email         string
 	PasswordHash  []byte
 	UpiID         pgtype.Text
+	PhoneNumber   pgtype.Text
 	CreatedAt     pgtype.Timestamp
 	UpdatedAt     pgtype.Timestamp
 	EmailVerified bool

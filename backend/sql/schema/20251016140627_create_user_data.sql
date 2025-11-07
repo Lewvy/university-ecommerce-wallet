@@ -14,10 +14,11 @@ CREATE TABLE if not exists users (
 	email text NOT NULL UNIQUE,
 	password_hash BYTEA NOT NULL,
 	upi_id TEXT UNIQUE,
+	phone_number text UNIQUE,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	email_verified BOOLEAN NOT NULL DEFAULT FALSE,
-	 user_type text NOT NULL DEFAULT 'customer',
+	user_type text NOT NULL DEFAULT 'customer',
 	version INT NOT NULL DEFAULT 1
 );
 

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ##############################
 # Backend (Node / Express etc.)
 ##############################
@@ -7,6 +8,9 @@ backend/api
 backend/bin/
 backend/tmp/
 backend/ca.pem
+=======
+
+>>>>>>> eaedf4b (Initial frontend)
 
 ##############################
 # Dependencies

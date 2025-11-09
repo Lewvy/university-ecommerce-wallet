@@ -12,7 +12,6 @@ SELECT id, name, password_hash
 FROM users 
 WHERE email = $1;
 
-
 -- name: GetUserByID :one
 -- Gets a user's public profile data
 SELECT id, name, email, upi_id, email_verified, created_at, version
@@ -31,12 +30,12 @@ SET
   updated_at = CURRENT_TIMESTAMP
 WHERE id = $1;
 
---name: UpdateUserEmail :exec
-Update users
-Set
-	email = $1,
-	updated_at = CURRENT_TIMESTAMP
-where id = $2
+-- name: UpdateUserEmail :exec
+UPDATE users
+SET
+    email = $1,
+    updated_at = CURRENT_TIMESTAMP
+where id = $2;
 
 -- name: UpdateUserProfile :one
 UPDATE users

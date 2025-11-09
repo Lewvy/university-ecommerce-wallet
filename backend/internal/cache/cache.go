@@ -6,7 +6,7 @@ import (
 )
 
 type Cache interface {
-	SetVerificationToken(ctx context.Context, tokenHash []byte, userID int64, expiry time.Duration) error
+	SetVerificationToken(ctx context.Context, tokenHash string, userID int64, expiry time.Duration) error
 	AddEmailToQueue(ctx context.Context, email, data string) error
 	GetUserIDByTokenHash(ctx context.Context, tokenHash string) (int64, error)
 	DeleteToken(ctx context.Context, tokenHash string) error

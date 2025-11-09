@@ -11,25 +11,40 @@ import (
 	"ecommerce/internal/token"
 	"ecommerce/internal/worker"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 )
 
+var ErrPwdMismatch = errors.New("invalid email or password")
+
 type UserService struct {
-	Logger *slog.Logger
-	Store  data.UserStore
-	Cache  cache.Cache
+	Logger       *slog.Logger
+	Store        data.UserStore
+	Cache        cache.Cache
+	TokenService *TokenService
 }
 
 type UserVerification struct {
-	// Email string `json:"email"`
 	ID    int    `json:"id"`
 	Token string `json:"token"`
 }
 
-func (s *UserService) VerifyUser(ctx context.Context, input *UserVerification) error {
+func NewUserService(logger *slog.Logger, store data.UserStore, cache cache.Cache, tokenService *TokenService) *UserService {
+	return &UserService{
+		Logger:       logger,
+		Store:        store,
+		Cache:        cache,
+		TokenService: tokenService,
+	}
+}
 
+func (s *UserService) UpdateEmail(ctx context.Context, input dto.UserEmailUpdate) error {
+	return nil
+}
+
+func (s *UserService) VerifyUser(ctx context.Context, input *UserVerification) error {
 	tokenHash, err := s.Cache.GetTokenHashByUserID(ctx, int64(input.ID))
 	if err != nil {
 		s.Logger.Error("Error getting token", "error", err)
@@ -53,61 +68,26 @@ func (s *UserService) VerifyUser(ctx context.Context, input *UserVerification) e
 	}
 }
 
-func NewUserService(logger *slog.Logger, store data.UserStore, cache cache.Cache) *UserService {
-	return &UserService{
-		Logger: logger,
-		Store:  store,
-		Cache:  cache,
-	}
-}
-
 func (s UserService) FindUserByEmail(email string) (*domain.User, error) {
 	return nil, nil
 }
 
-func (s UserService) Login(input dto.UserLogin) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	user, err := s.Store.GetUserAuthByEmail(ctx, input.Email)
-
-	s.Logger.Info("user logged in", "user", map[string]any{"name": user.Name})
-	if err != nil {
-		return err
-	}
-
-	return nil
-
-}
-
 func (s UserService) Signup(ctx context.Context, input dto.UserSignup) (*domain.User, error) {
-	var password_hash []byte
 
-	err := validateUser(input.Email, input.Password, input.Phone)
-	if err != nil {
-		return nil, err
-	}
-	password_hash, err = password.GeneratePasswordHash(input.Password)
+	password_hash, err := password.GeneratePasswordHash(input.Password)
 	if err != nil {
 		return nil, err
 	}
 
+	pgTextPwdHash := data.NewPGText(password_hash)
 	user := db.CreateUserParams{
 		Name:         input.Name,
 		Email:        input.Email,
-		PasswordHash: password_hash,
+		PasswordHash: pgTextPwdHash,
 	}
+	s.Logger.Info("Creating User", "user_password_hash_sample", password_hash[:10]+"...")
 
 	var dbUser db.User
-	// if os.Getenv("ENABLE_FAST_VALIDATION") == "true" {
-	// 	s.Logger.Info("User created successfully", "user_email", user.Email)
-	//
-	// 	resUser := &domain.User{
-	// 		Email: user.Email,
-	// 		Name:  user.Name,
-	// 	}
-	// 	return resUser, nil
-	// }
 	dbUser, err = s.Store.CreateUser(ctx, user)
 	if err != nil {
 		return nil, err

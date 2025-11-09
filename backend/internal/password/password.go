@@ -24,7 +24,7 @@ type params struct {
 	keyLength   uint32
 }
 
-func ComparePasswordAndHash(password, encodedHash string) (match bool, err error) {
+func ComparePasswordAndHash(password string, encodedHash string) (match bool, err error) {
 	p, salt, hash, err := decodeHash(encodedHash)
 	if err != nil {
 		return false, err
@@ -41,6 +41,10 @@ func ComparePasswordAndHash(password, encodedHash string) (match bool, err error
 func decodeHash(encodedHash string) (p *params, salt, hash []byte, err error) {
 	vals := strings.Split(encodedHash, "$")
 	if len(vals) != 6 {
+		return nil, nil, nil, ErrInvalidHash // This correctly catches the missing delimiter issue
+	}
+
+	if vals[1] != "argon2id" {
 		return nil, nil, nil, ErrInvalidHash
 	}
 
@@ -74,7 +78,7 @@ func decodeHash(encodedHash string) (p *params, salt, hash []byte, err error) {
 	return p, salt, hash, nil
 }
 
-func GeneratePasswordHash(password_plaintext string) ([]byte, error) {
+func GeneratePasswordHash(password_plaintext string) (string, error) {
 	p := &params{
 		memory:      64 * 1024,
 		iterations:  3,
@@ -83,23 +87,36 @@ func GeneratePasswordHash(password_plaintext string) ([]byte, error) {
 		keyLength:   32,
 	}
 
-	hash, err := generateFromPassword(password_plaintext, p)
+	salt, hash, err := generateFromPassword(password_plaintext, p)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return hash, nil
+	return encodeHash(p, salt, hash), nil
 }
 
-func generateFromPassword(password string, p *params) (hash []byte, err error) {
-	salt, err := generateRandomBytes(p.saltLength)
+func generateFromPassword(password string, p *params) (salt, hash []byte, err error) {
+	salt, err = generateRandomBytes(p.saltLength)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	hash = argon2.IDKey([]byte(password), salt, p.iterations, p.memory, p.parallelism, p.keyLength)
 
-	return hash, nil
+	return salt, hash, nil
+}
+
+func encodeHash(p *params, salt, hash []byte) string {
+	b64Salt := base64.RawStdEncoding.Strict().EncodeToString(salt)
+	b64Hash := base64.RawStdEncoding.Strict().EncodeToString(hash)
+
+	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
+		argon2.Version,
+		p.memory,
+		p.iterations,
+		p.parallelism,
+		b64Salt,
+		b64Hash)
 }
 
 func generateRandomBytes(n uint32) ([]byte, error) {

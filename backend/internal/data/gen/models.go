@@ -8,11 +8,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Token struct {
+	Hash   []byte
+	UserID int64
+	Expiry pgtype.Timestamptz
+	Scope  string
+}
+
 type User struct {
 	ID            int32
 	Name          string
 	Email         string
-	PasswordHash  []byte
+	PasswordHash  pgtype.Text
+	GoogleID      pgtype.Text
 	UpiID         pgtype.Text
 	PhoneNumber   pgtype.Text
 	CreatedAt     pgtype.Timestamp

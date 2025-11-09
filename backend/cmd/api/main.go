@@ -54,12 +54,17 @@ func main() {
 	workers := worker.NewWorkerPool(mailer, cacheClient, logger, true)
 	workers.StartQueueMonitor()
 	workers.StartEmailWorkers(1)
+
 	userStore := data.NewUserStore(sqlcQueries)
+	tokenStore := data.NewTokenStore(sqlcQueries)
+
 	// walletStore := data.NewWalletStore(sqlcQueries)
 
-	userService := service.NewUserService(logger, userStore, cacheClient)
+	tokenService := service.NewTokenService(tokenStore)
+	userService := service.NewUserService(logger, userStore, cacheClient, tokenService)
+	authService := service.NewAuthService(logger, userStore, tokenService)
 	// walletService := service.NewWalletService(logger, walletStore)
 
-	api.SetupServer(&cfg, logger, userService)
+	api.SetupServer(&cfg, logger, userService, tokenService, authService)
 
 }

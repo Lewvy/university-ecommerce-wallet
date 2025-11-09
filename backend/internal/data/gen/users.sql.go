@@ -17,13 +17,13 @@ INSERT INTO users (
 ) VALUES (
   $1, $2, $3
 )
-RETURNING id, name, email, password_hash, upi_id, phone_number, created_at, updated_at, email_verified, user_type, version
+RETURNING id, name, email, password_hash, google_id, upi_id, phone_number, created_at, updated_at, email_verified, user_type, version
 `
 
 type CreateUserParams struct {
 	Name         string
 	Email        string
-	PasswordHash []byte
+	PasswordHash pgtype.Text
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -34,6 +34,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Name,
 		&i.Email,
 		&i.PasswordHash,
+		&i.GoogleID,
 		&i.UpiID,
 		&i.PhoneNumber,
 		&i.CreatedAt,
@@ -54,7 +55,7 @@ WHERE email = $1
 type GetUserAuthByEmailRow struct {
 	ID           int32
 	Name         string
-	PasswordHash []byte
+	PasswordHash pgtype.Text
 }
 
 // Gets the user's ID and password hash for login
@@ -66,7 +67,7 @@ func (q *Queries) GetUserAuthByEmail(ctx context.Context, email string) (GetUser
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, name, email, password_hash, upi_id, phone_number, created_at, updated_at, email_verified, user_type, version FROM users
+SELECT id, name, email, password_hash, google_id, upi_id, phone_number, created_at, updated_at, email_verified, user_type, version FROM users
 WHERE email = $1
 `
 
@@ -79,6 +80,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Name,
 		&i.Email,
 		&i.PasswordHash,
+		&i.GoogleID,
 		&i.UpiID,
 		&i.PhoneNumber,
 		&i.CreatedAt,
@@ -122,6 +124,24 @@ func (q *Queries) GetUserByID(ctx context.Context, id int32) (GetUserByIDRow, er
 	return i, err
 }
 
+const updateUserEmail = `-- name: UpdateUserEmail :exec
+UPDATE users
+SET
+    email = $1,
+    updated_at = CURRENT_TIMESTAMP
+where id = $2
+`
+
+type UpdateUserEmailParams struct {
+	Email string
+	ID    int32
+}
+
+func (q *Queries) UpdateUserEmail(ctx context.Context, arg UpdateUserEmailParams) error {
+	_, err := q.db.Exec(ctx, updateUserEmail, arg.Email, arg.ID)
+	return err
+}
+
 const updateUserProfile = `-- name: UpdateUserProfile :one
 UPDATE users
 SET 
@@ -130,7 +150,7 @@ SET
   updated_at = CURRENT_TIMESTAMP,
   version = version + 1
 WHERE id = $3 AND version = $4
-RETURNING id, name, email, password_hash, upi_id, phone_number, created_at, updated_at, email_verified, user_type, version
+RETURNING id, name, email, password_hash, google_id, upi_id, phone_number, created_at, updated_at, email_verified, user_type, version
 `
 
 type UpdateUserProfileParams struct {
@@ -153,6 +173,7 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.Name,
 		&i.Email,
 		&i.PasswordHash,
+		&i.GoogleID,
 		&i.UpiID,
 		&i.PhoneNumber,
 		&i.CreatedAt,

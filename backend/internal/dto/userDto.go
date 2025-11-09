@@ -6,7 +6,7 @@ type UserLogin struct {
 }
 
 type UserEmailUpdate struct {
-	Email        string `json:"email"`
+	ID           int    `json:"id"`
 	UpdatedEmail string `json:"updated_email"`
 }
 

@@ -190,7 +190,7 @@ func (p *WorkerPool) RunEmailWorker(workerCancelChan chan struct{}) {
 			if strings.Contains(err.Error(), "nil message") {
 				continue
 			}
-			p.Logger.Error("Valkey BRPOP error. Retrying...", "error", err, "worker_id", id)
+			p.Logger.Error("Valkey brpop error. Retrying...", "error", err, "worker_id", id)
 			time.Sleep(delay)
 			if delay < 30*time.Second {
 				delay *= 2
@@ -200,13 +200,13 @@ func (p *WorkerPool) RunEmailWorker(workerCancelChan chan struct{}) {
 
 		elements, err := res.AsStrSlice()
 		if err != nil || len(elements) < 2 {
-			p.Logger.Error("Failed to extract job data from BRPOP", "error", err, "worker_id", id)
+			p.Logger.Error("Failed to extract job data from brpop", "error", err, "worker_id", id)
 			continue
 		}
 
 		var job MailJob
 		if err := json.Unmarshal([]byte(elements[1]), &job); err != nil {
-			p.Logger.Error("Failed to unmarshal job JSON", "job_skipped", elements[1], "worker_id", id)
+			p.Logger.Error("Failed to unmarshal job json", "job_skipped", elements[1], "worker_id", id)
 			continue
 		}
 

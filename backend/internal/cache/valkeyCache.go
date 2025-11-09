@@ -2,7 +2,6 @@ package cache
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -31,16 +30,15 @@ func (v *ValkeyCache) GetTokenHashByUserID(ctx context.Context, userID int64) (s
 	return tokenHash, nil
 }
 
-func (v *ValkeyCache) SetVerificationToken(ctx context.Context, tokenHash []byte, userID int64, expiry time.Duration) error {
+func (v *ValkeyCache) SetVerificationToken(ctx context.Context, tokenHash string, userID int64, expiry time.Duration) error {
 	userIDstr := strconv.FormatInt(userID, 10)
 
-	hex := hex.EncodeToString(tokenHash)
-	token := fmt.Sprintf("%s:%s:%s", "verification", "hash", hex)
+	token := fmt.Sprintf("%s:%s:%s", "verification", "hash", tokenHash)
 
 	tokenKeyCmd := v.Client.B().Set().Key(token).Value(userIDstr).Nx().Ex(expiry).Build()
 
 	userVerificationKey := fmt.Sprintf("user:%s:%s", userIDstr, "verification")
-	userKeyCmd := v.Client.B().Set().Key(userVerificationKey).Value(hex).Ex(expiry).Build()
+	userKeyCmd := v.Client.B().Set().Key(userVerificationKey).Value(tokenHash).Ex(expiry).Build()
 
 	resp := v.Client.DoMulti(ctx, tokenKeyCmd, userKeyCmd)
 	if err := resp[0].Error(); err != nil && !valkey.IsValkeyNil(err) {

@@ -1,10 +1,67 @@
+##############################
+# Backend (Node / Express etc.)
+##############################
 backend/*.env
-node_modules/
+backend/.env
 backend/api
 backend/bin/
 backend/tmp/
-
-backend/.env
-
-# ... (other things like .DS_Store, .vscode/)
 backend/ca.pem
+
+##############################
+# Dependencies
+##############################
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+##############################
+# Next.js / Frontend
+##############################
+.next/
+out/
+build/
+dist/
+
+##############################
+# Environment Variables
+##############################
+.env
+.env.local
+.env.*.local
+
+##############################
+# System / Misc
+##############################
+.DS_Store
+*.pem
+
+##############################
+# Debug / Logs
+##############################
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+##############################
+# TypeScript
+##############################
+*.tsbuildinfo
+next-env.d.ts
+
+##############################
+# Vercel/
+##############################
+.vercel
+
+##############################
+# IDE / Editor settings
+##############################
+.vscode/
+.idea/

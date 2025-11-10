@@ -73,19 +73,22 @@ func (s UserService) FindUserByEmail(email string) (*domain.User, error) {
 }
 
 func (s UserService) Signup(ctx context.Context, input dto.UserSignup) (*domain.User, error) {
+	err := validateUser(input.Email, input.Password, input.Phone)
+	if err != nil {
+		return nil, err
+	}
 
 	password_hash, err := password.GeneratePasswordHash(input.Password)
 	if err != nil {
 		return nil, err
 	}
-
 	pgTextPwdHash := data.NewPGText(password_hash)
 	user := db.CreateUserParams{
 		Name:         input.Name,
 		Email:        input.Email,
 		PasswordHash: pgTextPwdHash,
 	}
-	s.Logger.Info("Creating User", "user_password_hash_sample", password_hash[:10]+"...")
+	s.Logger.Info("Creating User", "email", user.Email)
 
 	var dbUser db.User
 	dbUser, err = s.Store.CreateUser(ctx, user)
@@ -104,6 +107,41 @@ func (s UserService) Signup(ctx context.Context, input dto.UserSignup) (*domain.
 
 	return resUser, nil
 
+}
+
+func (s *UserService) Login(ctx context.Context, input dto.UserLogin) (accessToken string, refreshToken string, err error) {
+	s.Logger.Info("Attempting user login", "email", input.Email)
+
+	userAuth, err := s.Store.GetUserAuthByEmail(ctx, input.Email)
+	if err != nil {
+		if errors.Is(err, data.ErrRecordNotFound) {
+			return "", "", ErrPwdMismatch
+		}
+		s.Logger.Error("Error retrieving user auth data", "error", err)
+		return "", "", err
+	}
+
+	stored_pwd_hash := userAuth.PasswordHash.String
+	match, err := password.ComparePasswordAndHash(input.Password, stored_pwd_hash)
+	if err != nil || !match {
+		if !match {
+			s.Logger.Warn("Login failed: password mismatch", "email", input.Email)
+		} else {
+			s.Logger.Error("Password comparison failed", "error", err)
+		}
+		return "", "", ErrPwdMismatch
+	}
+
+	userID := int64(userAuth.ID)
+
+	newAccessToken, newRefreshToken, err := s.TokenService.CreateNewTokens(ctx, userID)
+	if err != nil {
+		s.Logger.Error("Failed to generate and save tokens", "error", err, "user_id", userID)
+		return "", "", errors.New("failed to generate secure tokens")
+	}
+
+	s.Logger.Info("User logged in successfully", "user_id", userID)
+	return newAccessToken.Plaintext, newRefreshToken.Plaintext, nil
 }
 
 func (s UserService) sendToken(ctx context.Context, id int32, email string, name string) {

@@ -21,9 +21,9 @@ func UserRoutes(rh *rest.RestHandler, userService *service.UserService, protecte
 	h := UserHandler{
 		Svc: userService,
 	}
-	app.Post("/register", h.RegisterUserHandler)
 
 	app.Post("/verify", h.Verify)
+
 	app.Get("/verify", h.GetVerificationCode)
 
 	app.Post("/profile", h.CreateProfile)
@@ -35,6 +35,74 @@ func UserRoutes(rh *rest.RestHandler, userService *service.UserService, protecte
 	app.Get("/order/:id", h.GetOrder)
 
 	app.Post("/become-seller", h.BecomeSeller)
+}
+
+func (h *UserHandler) LoginUserHandler(c *fiber.Ctx) error {
+	ctx := c.Context()
+	var input dto.UserLogin
+
+	err := c.BodyParser(&input)
+	if err != nil {
+		h.Svc.Logger.Error("Error decoding user", "err", err)
+		return c.Status(http.StatusBadRequest).JSON(
+			fiber.Map{
+				"error": "invalid email/password format",
+			},
+		)
+	}
+
+	accessToken, refreshToken, err := h.Svc.Login(ctx, input)
+
+	if err != nil {
+		if errors.Is(err, service.ErrPwdMismatch) {
+			h.Svc.Logger.Warn("User Validation Error", "error", service.ErrPwdMismatch.Error())
+			return c.Status(http.StatusBadRequest).JSON(dto.ErrorResponse{
+				Code:    "validation_error",
+				Message: "invalid email or password",
+			})
+		}
+
+		h.Svc.Logger.Error("Internal error during login", "err", err)
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"error": "An internal server error has occurred",
+		})
+	}
+
+	return c.Status(http.StatusOK).JSON(fiber.Map{
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
+	})
+}
+
+func (h *UserHandler) RegisterUserHandler(c *fiber.Ctx) error {
+	var userSignup dto.UserSignup
+
+	err := c.BodyParser(&userSignup)
+	if err != nil {
+		h.Svc.Logger.Error("Error decoding", "err", err)
+		return c.Status(http.StatusBadRequest).JSON(dto.ErrorResponse{
+			Code:    "bad_request",
+			Message: "Invalid request body",
+		})
+	}
+
+	user, err := h.Svc.Signup(c.Context(), userSignup)
+	if err != nil {
+		var validationError *validator.ValidationError
+		if errors.As(err, &validationError) {
+			h.Svc.Logger.Warn("User Validation Error", "error", validationError.Errors)
+			return c.Status(http.StatusBadRequest).JSON(dto.ErrorResponse{
+				Code:    "validation_error",
+				Message: "invalid details",
+				Fields:  validationError.Errors})
+		}
+
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
+			"error": "An internal server error has occured",
+		})
+	}
+
+	return c.Status(http.StatusCreated).JSON(&user, "application/json")
 }
 
 func (h *UserHandler) GetVerificationCode(c *fiber.Ctx) error {
@@ -90,35 +158,4 @@ func (h *UserHandler) GetCart(c *fiber.Ctx) error {
 
 func (h *UserHandler) GetProfile(c *fiber.Ctx) error {
 	return nil
-}
-
-func (h *UserHandler) RegisterUserHandler(c *fiber.Ctx) error {
-	var userSignup dto.UserSignup
-
-	err := c.BodyParser(&userSignup)
-	if err != nil {
-		h.Svc.Logger.Error("Error decoding", "err", err)
-		return c.Status(http.StatusBadRequest).JSON(dto.ErrorResponse{
-			Code:    "bad_request",
-			Message: "Invalid request body",
-		})
-	}
-
-	user, err := h.Svc.Signup(c.Context(), userSignup)
-	if err != nil {
-		var validationError *validator.ValidationError
-		if errors.As(err, &validationError) {
-			h.Svc.Logger.Warn("User Validation Error", "error", validationError.Errors)
-			return c.Status(http.StatusBadRequest).JSON(dto.ErrorResponse{
-				Code:    "validation_error",
-				Message: "invalid details",
-				Fields:  validationError.Errors})
-		}
-
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
-			"error": "An internal server error has occured",
-		})
-	}
-
-	return c.Status(http.StatusCreated).JSON(&user, "application/json")
 }

@@ -75,7 +75,7 @@ func GenerateAccessToken(userID int64, ttl time.Duration, scope string) (*Token,
 }
 
 func GenerateRefreshToken(userID int64, ttl time.Duration, scope string) (*Token, error) {
-	result, err := generateRandomString(32)
+	result, err := generateRandomString(64)
 	if err != nil {
 		return nil, err
 	}

@@ -48,6 +48,7 @@ func (h *TokenHandler) RefreshTokenHandler(c *fiber.Ctx) error {
 	newAccessToken, newRefreshToken, err := h.svc.RefreshAndRevokeTokens(ctx, input.RefreshToken)
 
 	if err != nil {
+
 		if errors.Is(err, token.ErrTokenNotFound) || errors.Is(err, errors.New("refresh token expired")) {
 			return c.Status(http.StatusForbidden).JSON(dto.ErrorResponse{
 				Code:    "invalid_token",

@@ -8,6 +8,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Product struct {
+	ID          int64
+	SellerID    int64
+	Name        string
+	Description pgtype.Text
+	Price       int32
+	Stock       int32
+	ImageUrl    pgtype.Text
+	IsActive    bool
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
 type Token struct {
 	Hash   []byte
 	UserID int64

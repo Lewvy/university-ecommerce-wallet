@@ -8,6 +8,7 @@ node_modules
 /.svelte-kit
 /build
 .next
+.svelte-kit
 
 # OS
 .DS_Store

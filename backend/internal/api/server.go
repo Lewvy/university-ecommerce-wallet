@@ -17,7 +17,7 @@ func SetupServer(config *config.Config, logger *slog.Logger, userService *servic
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "http://localhost:3000",
-		AllowMethods: "POST, GET, OPTIONS",
+		AllowMethods: "POST, PATCH, PUT, GET, OPTIONS",
 		AllowHeaders: "Origin, Content-Type, Accept",
 	}))
 

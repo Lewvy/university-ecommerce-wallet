@@ -4,9 +4,9 @@ services:
     image: postgres:17-alpine
     restart: always
     environment:
-      POSTGRES_USER: wallet  
-      POSTGRES_PASSWORD: norton_texas 
-      POSTGRES_DB: wallet        
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5436:5432" 
     volumes:

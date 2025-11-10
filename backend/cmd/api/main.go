@@ -61,7 +61,7 @@ func main() {
 
 	// walletStore := data.NewWalletStore(sqlcQueries)
 
-	tokenService := service.NewTokenService(tokenStore)
+	tokenService := service.NewTokenService(tokenStore, logger)
 	userService := service.NewUserService(logger, userStore, cacheClient, tokenService)
 	// authService := service.NewAuthService(logger, authStore, tokenService)
 	// walletService := service.NewWalletService(logger, walletStore)

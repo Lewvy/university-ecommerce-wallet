@@ -21,9 +21,12 @@ export default function SignupPage({ onSignupSuccess }: SignupPageProps) {
 	const [userName, setUserName] = useState("")
 	const [userPhone, setUserPhone] = useState("")
 	const [password, setPassword] = useState("")
+	const [userId, setUserId] = useState<number | null>(null)
 
 	const handleFormSubmit = async (data: FormData) => {
 		try {
+			console.log("Sending registration request with data:", data)
+			
 			const response = await fetch("http://localhost:8088/register", {
 				method: "POST",
 				headers: {
@@ -33,14 +36,27 @@ export default function SignupPage({ onSignupSuccess }: SignupPageProps) {
 			});
 
 			const responseData = await response.json();
+			console.log("Registration response:", response.status, responseData)
 
 			if (response.ok) {
 				console.log("Registration Success:", responseData);
 
+				// Store user information
 				setUserEmail(data.email)
 				setUserName(data.name)
 				setUserPhone(data.phone)
 				setPassword(data.password)
+				
+				// Store user ID if returned by backend
+				if (responseData.id) {
+					setUserId(responseData.id)
+					console.log("User ID stored:", responseData.id)
+				} else if (responseData.user && responseData.user.id) {
+					setUserId(responseData.user.id)
+					console.log("User ID stored from user object:", responseData.user.id)
+				} else {
+					console.warn("No user ID returned from registration")
+				}
 
 				setStep("verification")
 			} else {
@@ -50,7 +66,10 @@ export default function SignupPage({ onSignupSuccess }: SignupPageProps) {
 				if (responseData.message) {
 					errorMessage = responseData.message;
 				} else if (responseData.fields) {
-					errorMessage = `Validation Error: ${Object.values(responseData.fields).join(', ')}`;
+					const fieldErrors = Object.entries(responseData.fields)
+						.map(([field, msg]) => `${field}: ${msg}`)
+						.join(', ');
+					errorMessage = `Validation Error: ${fieldErrors}`;
 				}
 
 				alert(errorMessage);
@@ -74,7 +93,8 @@ export default function SignupPage({ onSignupSuccess }: SignupPageProps) {
 
 	if (step === "verification") {
 		return <EmailVerificationPage 
-			email={userEmail} 
+			email={userEmail}
+			userId={userId}
 			password={password}
 			onVerificationComplete={handleVerificationComplete} 
 		/>

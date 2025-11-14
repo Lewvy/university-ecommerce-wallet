@@ -5,11 +5,12 @@ import { useState, useEffect } from "react"
 
 interface EmailVerificationPageProps {
 	email: string
+	userId: number | null
 	password: string
 	onVerificationComplete: () => void
 }
 
-export default function EmailVerificationPage({ email, password, onVerificationComplete }: EmailVerificationPageProps) {
+export default function EmailVerificationPage({ email, userId, password, onVerificationComplete }: EmailVerificationPageProps) {
 	const [token, setToken] = useState("")
 	const [timeLeft, setTimeLeft] = useState(60)
 	const [isVerifying, setIsVerifying] = useState(false)
@@ -34,57 +35,96 @@ export default function EmailVerificationPage({ email, password, onVerificationC
 		setError(null)
 
 		try {
-			const verifyResponse = await fetch("http://localhost:8088/verify-email", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					email: email,
-					token: token
-				}),
-			})
+			// Build the verification payload
+			// Try with different combinations based on what backend might expect
+			const verificationPayloads = [
+				// Most common: just the token (token contains all needed info)
+				{ token: token },
+				// Or: token + email
+				{ token: token, email: email },
+				// Or: token + user_id
+				userId ? { token: token, user_id: userId } : null,
+				// Or: all three
+				userId ? { token: token, email: email, user_id: userId } : null,
+			].filter(Boolean) // Remove null entries
 
-			const verifyData = await verifyResponse.json()
+			let verificationSuccessful = false
+			let lastError = null
 
-			if (verifyResponse.ok) {
-				console.log("Email verification successful:", verifyData)
+			// Try each payload format until one works
+			for (const payload of verificationPayloads) {
+				console.log("Trying verification with payload:", payload)
 
-				// After successful verification, automatically log in
-				const loginResponse = await fetch("http://localhost:8088/login", {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify({
-						email: email,
-						password: password
-					}),
-				})
+				try {
+					const verifyResponse = await fetch("http://localhost:8088/verify-email", {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify(payload),
+					})
 
-				const loginData = await loginResponse.json()
+					const verifyData = await verifyResponse.json()
+					console.log("Verification response:", verifyResponse.status, verifyData)
 
-				if (loginResponse.ok) {
-					console.log("Auto-login successful:", loginData)
+					if (verifyResponse.ok) {
+						console.log("Email verification successful!")
+						verificationSuccessful = true
+						
+						// After successful verification, automatically log in
+						try {
+							const loginResponse = await fetch("http://localhost:8088/login", {
+								method: "POST",
+								headers: {
+									"Content-Type": "application/json",
+								},
+								body: JSON.stringify({
+									email: email,
+									password: password
+								}),
+							})
 
-					// Store tokens in memory (you can also use context or state management)
-					if (loginData.access_token) {
-						sessionStorage.setItem('access_token', loginData.access_token)
+							const loginData = await loginResponse.json()
+
+							if (loginResponse.ok) {
+								console.log("Auto-login successful:", loginData)
+
+								// Store tokens
+								if (loginData.access_token) {
+									localStorage.setItem('access_token', loginData.access_token)
+								}
+								if (loginData.refresh_token) {
+									localStorage.setItem('refresh_token', loginData.refresh_token)
+								}
+
+								onVerificationComplete()
+							} else {
+								console.error("Login failed:", loginData)
+								setError(loginData.message || "Verification successful but login failed. Please try logging in manually.")
+								setTimeout(() => {
+									onVerificationComplete()
+								}, 3000)
+							}
+						} catch (loginError) {
+							console.error("Login error:", loginError)
+							setError("Verification successful but login failed. Please try logging in manually.")
+							setTimeout(() => {
+								onVerificationComplete()
+							}, 3000)
+						}
+						
+						break // Exit the loop since verification was successful
+					} else {
+						lastError = verifyData.message || "Verification failed"
 					}
-					if (loginData.refresh_token) {
-						sessionStorage.setItem('refresh_token', loginData.refresh_token)
-					}
-
-					onVerificationComplete()
-				} else {
-					setError(loginData.message || "Login failed after verification. Please try logging in manually.")
-					setTimeout(() => {
-						onVerificationComplete()
-					}, 2000)
+				} catch (err) {
+					console.error("Verification attempt error:", err)
+					lastError = "Network error"
 				}
-			} else {
-				console.error("Email verification failed:", verifyData)
-				setError(verifyData.message || "Invalid verification token. Please try again.")
+			}
+
+			if (!verificationSuccessful) {
+				setError(lastError || "Invalid verification token. Please check the code and try again.")
 			}
 		} catch (error) {
 			console.error("Verification error:", error)
@@ -104,12 +144,13 @@ export default function EmailVerificationPage({ email, password, onVerificationC
 				body: JSON.stringify({ email }),
 			})
 
+			const data = await response.json()
+
 			if (response.ok) {
 				setTimeLeft(60)
 				setError(null)
-				alert("Verification code resent successfully!")
+				alert("Verification code resent successfully! Check your email.")
 			} else {
-				const data = await response.json()
 				setError(data.message || "Failed to resend verification code")
 			}
 		} catch (error) {
@@ -134,44 +175,60 @@ export default function EmailVerificationPage({ email, password, onVerificationC
 					</div>
 
 					<h2 className="text-2xl font-bold text-gray-900 mb-2">Verify Your Email</h2>
-					<p className="text-gray-600 mb-6">
-						We sent a verification token to <span className="font-semibold">{email}</span>
+					<p className="text-gray-600 mb-2">
+						We sent a verification code to
 					</p>
+					<p className="font-semibold text-gray-900 mb-6">{email}</p>
+
+					{userId && (
+						<p className="text-xs text-gray-500 mb-4">User ID: {userId}</p>
+					)}
 
 					<form onSubmit={handleVerify} className="space-y-4">
 						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">Verification Token</label>
+							<label className="block text-sm font-medium text-gray-700 mb-2">Verification Code</label>
 							<input
 								type="text"
 								value={token}
 								onChange={(e) => {
-									setToken(e.target.value)
+									setToken(e.target.value.trim())
 									setError(null)
 								}}
-								placeholder="Enter verification code"
+								placeholder="Enter 6-digit code"
 								required
 								disabled={isVerifying}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-center text-lg tracking-widest disabled:opacity-50"
+								maxLength={6}
+								className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-center text-2xl font-mono tracking-wider disabled:opacity-50"
 							/>
 						</div>
 
 						{error && (
-							<p className="text-sm text-red-600 font-medium">{error}</p>
+							<div className="bg-red-50 border border-red-200 rounded-lg p-3">
+								<p className="text-sm text-red-600 font-medium">{error}</p>
+							</div>
 						)}
 
 						<button
 							type="submit"
-							disabled={isVerifying}
-							className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white font-semibold py-2 rounded-lg hover:shadow-lg transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
+							disabled={isVerifying || token.length === 0}
+							className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white font-semibold py-3 rounded-lg hover:shadow-lg transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
 						>
-							{isVerifying ? 'Verifying...' : 'Verify Email'}
+							{isVerifying ? (
+								<span className="flex items-center justify-center">
+									<svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+										<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+										<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+									</svg>
+									Verifying...
+								</span>
+							) : 'Verify Email'}
 						</button>
 					</form>
 
-					<div className="mt-4">
+					<div className="mt-6">
 						{timeLeft > 0 ? (
 							<p className="text-gray-600 text-sm">
-								Resend code in <span className="font-semibold text-blue-600">{timeLeft}s</span>
+								Didn't receive the code? Resend in <span className="font-semibold text-blue-600">{timeLeft}s</span>
 							</p>
 						) : (
 							<button
@@ -181,6 +238,15 @@ export default function EmailVerificationPage({ email, password, onVerificationC
 								Resend verification code
 							</button>
 						)}
+					</div>
+
+					<div className="mt-6 p-3 bg-blue-50 rounded-lg">
+						<p className="text-xs text-gray-600 text-left">
+							<span className="font-semibold">💡 Tips:</span>
+							<br />• Check your email inbox for the verification code
+							<br />• Look in your spam/junk folder if you don't see it
+							<br />• The code is usually 6 digits
+						</p>
 					</div>
 				</div>
 			</div>

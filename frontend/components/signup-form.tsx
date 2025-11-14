@@ -4,12 +4,12 @@ import type React from "react"
 import { useState } from "react"
 
 interface SignupFormProps {
-	onSubmit: (data: { email: string, username: string, phone: string, password: string }) => void
+	onSubmit: (data: { email: string, name: string, phone: string, password: string }) => void
 }
 
 export default function SignupForm({ onSubmit }: SignupFormProps) {
 	const [formData, setFormData] = useState({
-		username: "",
+		name: "",
 		email: "",
 		password: "",
 		phone: "",
@@ -45,8 +45,8 @@ export default function SignupForm({ onSubmit }: SignupFormProps) {
 							<label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
 							<input
 								type="text"
-								name="username"
-								value={formData.username}
+								name="name"
+								value={formData.name}
 								onChange={handleChange}
 								placeholder="Enter your username"
 								required

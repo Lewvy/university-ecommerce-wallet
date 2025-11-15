@@ -51,7 +51,7 @@ func main() {
 	cfg.DB = dbPool
 	sqlcQueries := db.New(dbPool)
 
-	workers := worker.NewWorkerPool(mailer, cacheClient, logger, true)
+	workers := worker.NewWorkerPool(mailer, cacheClient, logger, false)
 	workers.StartQueueMonitor()
 	workers.StartEmailWorkers(1)
 

@@ -6,6 +6,7 @@ require (
 	github.com/gofiber/fiber/v2 v2.52.9
 	github.com/gorilla/sessions v1.1.1
 	github.com/joho/godotenv v1.5.1
+	github.com/razorpay/razorpay-go v1.4.0
 	github.com/sqlc-dev/sqlc v1.30.0
 )
 

@@ -7,8 +7,9 @@ export default function Page() {
 	const router = useRouter()
 
 	useEffect(() => {
-		const user = sessionStorage.getItem('user')
-		const token = sessionStorage.getItem('access_token')
+		// Check if user is already logged in
+		const user = localStorage.getItem('user')
+		const token = localStorage.getItem('access_token')
 
 		if (user && token) {
 			router.push('/dashboard')

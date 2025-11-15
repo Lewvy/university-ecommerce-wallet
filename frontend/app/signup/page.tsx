@@ -22,9 +22,7 @@ export default function SignupPage() {
 	const [password, setPassword] = useState("")
 	const [userId, setUserId] = useState<number | null>(null)
 
-	// ------------------------------
-	// SIGNUP FORM SUBMISSION
-	// ------------------------------
+	
 	const handleFormSubmit = async (data: FormData) => {
 		try {
 			console.log("Sending registration request:", data)
@@ -79,7 +77,7 @@ export default function SignupPage() {
 		}
 		
 		console.log("Storing user info:", userInfo)
-		sessionStorage.setItem('user', JSON.stringify(userInfo))
+		localStorage.setItem('user', JSON.stringify(userInfo))
 		
 		// Show success screen briefly
 		setStep("success")
@@ -88,7 +86,7 @@ export default function SignupPage() {
 		await new Promise(resolve => setTimeout(resolve, 1500))
 		
 		console.log("Redirecting to dashboard...")
-		router.push("/dashboard")
+		router.push("/login")
 	}
 
 	// ------------------------------

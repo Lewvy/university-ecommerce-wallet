@@ -9,8 +9,9 @@ import SellItemForm from "../../components/sell-item-form"
 import ProfilePage from "../../components/profile-page"
 import CartPage from "../../components/cart-page"
 import CategoriesView from "../../components/categories-view"
+import WalletPage from "../../components/wallet-page"
 
-type CurrentView = "home" | "buy" | "sell" | "profile" | "categories" | "logout"
+type CurrentView = "home" | "buy" | "sell" | "profile" | "categories" | "wallet" | "logout"
 
 export default function DashboardPage() {
 	const router = useRouter()
@@ -21,8 +22,8 @@ export default function DashboardPage() {
 	useEffect(() => {
 		console.log("Dashboard: Checking authentication...")
 		
-		const storedUser = sessionStorage.getItem("user")
-		const token = sessionStorage.getItem("access_token")
+		const storedUser = localStorage.getItem("user")
+		const token = localStorage.getItem("access_token")
 
 		console.log("Stored user:", storedUser)
 		console.log("Has token:", !!token)
@@ -61,7 +62,7 @@ export default function DashboardPage() {
 
 	const handleLogout = () => {
 		console.log("Logging out...")
-		sessionStorage.clear()
+		localStorage.clear()
 		router.push("/login")
 	}
 
@@ -120,6 +121,7 @@ export default function DashboardPage() {
 					{currentView === "categories" && (
 						<CategoriesView onCategorySelect={handleCategorySelect} postedItems={postedItems} />
 					)}
+					{currentView === "wallet" && <WalletPage userData={userData} />}
 				</main>
 			</div>
 		</div>

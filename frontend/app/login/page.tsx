@@ -43,10 +43,10 @@ export default function LoginPage() {
 				
 				// Store authentication tokens
 				if (data.access_token) {
-					sessionStorage.setItem('access_token', data.access_token)
+					localStorage.setItem('access_token', data.access_token)
 				}
 				if (data.refresh_token) {
-					sessionStorage.setItem('refresh_token', data.refresh_token)
+					localStorage.setItem('refresh_token', data.refresh_token)
 				}
 				
 				// Store user info - normalize the data structure
@@ -58,7 +58,7 @@ export default function LoginPage() {
 				}
 				
 				console.log("Storing user info:", userInfo)
-				sessionStorage.setItem('user', JSON.stringify(userInfo))
+				localStorage.setItem('user', JSON.stringify(userInfo))
 				
 				// Force a small delay to ensure storage completes
 				await new Promise(resolve => setTimeout(resolve, 100))

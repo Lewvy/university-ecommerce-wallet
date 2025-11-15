@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"log/slog"
 	"time"
 )
@@ -22,7 +23,9 @@ var ErrPwdMismatch = errors.New("invalid email or password")
 type UserService struct {
 	Logger       *slog.Logger
 	Store        data.UserStore
+	WalletStore  data.WalletStore
 	Cache        cache.Cache
+	Pool         *pgxpool.Pool
 	TokenService *TokenService
 }
 
@@ -31,12 +34,21 @@ type UserVerification struct {
 	Token string `json:"token"`
 }
 
-func NewUserService(logger *slog.Logger, store data.UserStore, cache cache.Cache, tokenService *TokenService) *UserService {
+func NewUserService(
+	logger *slog.Logger,
+	store data.UserStore,
+	walletStore data.WalletStore,
+	cache cache.Cache,
+	pool *pgxpool.Pool,
+	tokenService *TokenService,
+) *UserService {
 	return &UserService{
 		Logger:       logger,
 		Store:        store,
 		Cache:        cache,
 		TokenService: tokenService,
+		WalletStore:  walletStore,
+		Pool:         pool,
 	}
 }
 
@@ -82,6 +94,17 @@ func (s UserService) Signup(ctx context.Context, input dto.UserSignup) (*domain.
 	if err != nil {
 		return nil, err
 	}
+
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		s.Logger.Error("Failed to begin transaction", "error", err)
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	txUserStore := s.Store.WithTx(tx)
+	txWalletStore := s.WalletStore.WithTx(tx)
+
 	pgTextPwdHash := data.NewPGText(password_hash)
 	user := db.CreateUserParams{
 		Name:         input.Name,
@@ -91,10 +114,23 @@ func (s UserService) Signup(ctx context.Context, input dto.UserSignup) (*domain.
 	s.Logger.Info("Creating User", "email", user.Email)
 
 	var dbUser db.User
-	dbUser, err = s.Store.CreateUser(ctx, user)
+	dbUser, err = txUserStore.CreateUser(ctx, user)
 	if err != nil {
+		s.Logger.Warn("Failed to create user, rolling back", "error", err)
 		return nil, err
 	}
+
+	_, err = txWalletStore.CreateWallet(ctx, dbUser.ID)
+	if err != nil {
+		s.Logger.Warn("Failed to create wallet, rolling back", "user_id", dbUser.ID, "error", err)
+		return nil, err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		s.Logger.Error("Failed to commit transaction", "error", err)
+		return nil, err
+	}
+
 	resUser := &domain.User{
 		ID:    uint64(dbUser.ID),
 		Email: dbUser.Email,
@@ -103,10 +139,9 @@ func (s UserService) Signup(ctx context.Context, input dto.UserSignup) (*domain.
 
 	s.sendToken(ctx, dbUser.ID, dbUser.Email, dbUser.Name)
 
-	s.Logger.Info("User created successfully", "user_id", resUser.ID, "user_email", resUser.Email)
+	s.Logger.Info("User and wallet created successfully", "user_id", resUser.ID, "user_email", resUser.Email)
 
 	return resUser, nil
-
 }
 
 func (s *UserService) Login(ctx context.Context, input dto.UserLogin) (accessToken string, refreshToken string, err error) {
@@ -115,7 +150,7 @@ func (s *UserService) Login(ctx context.Context, input dto.UserLogin) (accessTok
 	userAuth, err := s.Store.GetUserAuthByEmail(ctx, input.Email)
 	if err != nil {
 		if errors.Is(err, data.ErrRecordNotFound) {
-			return "", "", ErrPwdMismatch
+			return "", "", data.ErrRecordNotFound
 		}
 		s.Logger.Error("Error retrieving user auth data", "error", err)
 		return "", "", err

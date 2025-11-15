@@ -56,7 +56,7 @@ export default function EmailVerificationPage({ email, userId, password, onVerif
 				console.log("Trying verification with payload:", payload)
 
 				try {
-					const verifyResponse = await fetch("http://localhost:8088/verify-email", {
+					const verifyResponse = await fetch("http://localhost:8088/verify", {
 						method: "POST",
 						headers: {
 							"Content-Type": "application/json",
@@ -70,8 +70,7 @@ export default function EmailVerificationPage({ email, userId, password, onVerif
 					if (verifyResponse.ok) {
 						console.log("Email verification successful!")
 						verificationSuccessful = true
-						
-						// After successful verification, automatically log in
+
 						try {
 							const loginResponse = await fetch("http://localhost:8088/login", {
 								method: "POST",
@@ -112,7 +111,7 @@ export default function EmailVerificationPage({ email, userId, password, onVerif
 								onVerificationComplete()
 							}, 3000)
 						}
-						
+
 						break // Exit the loop since verification was successful
 					} else {
 						lastError = verifyData.message || "Verification failed"

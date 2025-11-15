@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	db "ecommerce/internal/data/gen"
 	"errors"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type WalletStore interface {
@@ -13,6 +15,7 @@ type WalletStore interface {
 	GetWalletByUserIDForUpdate(ctx context.Context, userID int32) (db.Wallet, error)
 	CreditWallet(ctx context.Context, arg db.CreditWalletParams) (db.Wallet, error)
 	DebitWallet(ctx context.Context, arg db.DebitWalletParams) (db.Wallet, error)
+	WithTx(tx pgx.Tx) WalletStore
 }
 
 type sqlWalletStore struct {
@@ -22,6 +25,11 @@ type sqlWalletStore struct {
 func NewWalletStore(queries *db.Queries) WalletStore {
 	return &sqlWalletStore{
 		q: queries,
+	}
+}
+func (s *sqlWalletStore) WithTx(tx pgx.Tx) WalletStore {
+	return &sqlWalletStore{
+		q: db.New(tx),
 	}
 }
 

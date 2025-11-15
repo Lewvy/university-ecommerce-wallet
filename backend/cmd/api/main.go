@@ -59,13 +59,14 @@ func main() {
 	tokenStore := data.NewTokenStore(sqlcQueries)
 	// authStore := data.NewAuthStore(sqlcQueries)
 
-	// walletStore := data.NewWalletStore(sqlcQueries)
+	walletStore := data.NewWalletStore(sqlcQueries)
 
 	tokenService := service.NewTokenService(tokenStore, logger)
-	userService := service.NewUserService(logger, userStore, cacheClient, tokenService)
+	userService := service.NewUserService(logger, userStore, walletStore, cacheClient, dbPool, tokenService)
+	walletService := service.NewWalletService(walletStore, logger)
 	// authService := service.NewAuthService(logger, authStore, tokenService)
 	// walletService := service.NewWalletService(logger, walletStore)
 
-	api.SetupServer(&cfg, logger, userService, tokenService)
+	api.SetupServer(&cfg, logger, userService, tokenService, walletService, dbPool)
 
 }

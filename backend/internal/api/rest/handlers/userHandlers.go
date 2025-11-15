@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"ecommerce/internal/api/rest"
+	"ecommerce/internal/data"
 	"ecommerce/internal/dto"
 	"ecommerce/internal/service"
 	"ecommerce/internal/validator"
@@ -21,10 +22,6 @@ func UserRoutes(rh *rest.RestHandler, userService *service.UserService, protecte
 	h := UserHandler{
 		Svc: userService,
 	}
-
-	app.Post("/verify", h.Verify)
-
-	app.Get("/verify", h.GetVerificationCode)
 
 	app.Post("/profile", h.CreateProfile)
 	app.Get("/profile", h.GetProfile)
@@ -59,6 +56,11 @@ func (h *UserHandler) LoginUserHandler(c *fiber.Ctx) error {
 			return c.Status(http.StatusBadRequest).JSON(dto.ErrorResponse{
 				Code:    "validation_error",
 				Message: "invalid email or password",
+			})
+		} else if errors.Is(err, data.ErrRecordNotFound) {
+			return c.Status(http.StatusBadRequest).JSON(dto.ErrorResponse{
+				Code:    "user_error",
+				Message: "email not found",
 			})
 		}
 

@@ -3,6 +3,8 @@ package data
 import (
 	"context"
 	db "ecommerce/internal/data/gen"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type UserStore interface {
@@ -11,6 +13,7 @@ type UserStore interface {
 	GetUserByID(ctx context.Context, id int) (db.GetUserByIDRow, error)
 	VerifyUserEmail(ctx context.Context, id int) error
 	UpdateUserEmail(ctx context.Context, id int, updated_email string) error
+	WithTx(tx pgx.Tx) UserStore
 }
 
 type sqlUserStore struct {
@@ -39,6 +42,12 @@ func (s *sqlUserStore) UpdateUserEmail(ctx context.Context, id int, updated_emai
 
 	return s.q.UpdateUserEmail(ctx, params)
 
+}
+
+func (s *sqlUserStore) WithTx(tx pgx.Tx) UserStore {
+	return &sqlUserStore{
+		q: db.New(tx),
+	}
 }
 
 func NewUserStore(queries *db.Queries) UserStore {

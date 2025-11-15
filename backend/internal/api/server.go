@@ -10,9 +10,17 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func SetupServer(config *config.Config, logger *slog.Logger, userService *service.UserService, tokenService *service.TokenService) {
+func SetupServer(
+	config *config.Config,
+	logger *slog.Logger,
+	userService *service.UserService,
+	tokenService *service.TokenService,
+	walletService *service.WalletService,
+	dbPool *pgxpool.Pool,
+) {
 	app := fiber.New()
 
 	app.Use(cors.New(cors.Config{
@@ -32,10 +40,15 @@ func SetupServer(config *config.Config, logger *slog.Logger, userService *servic
 
 	rh.App.Post("/register", userHandler.RegisterUserHandler)
 	rh.App.Post("/login", userHandler.LoginUserHandler)
+	app.Post("/verify", userHandler.Verify)
+	app.Get("/verify", userHandler.GetVerificationCode)
+
+	handlers.TokenRoutes(rh, tokenService)
 
 	protected := app.Group("/", authMiddleware)
+
 	handlers.UserRoutes(rh, userService, protected)
-	handlers.TokenRoutes(rh, tokenService)
+	handlers.WalletRoutes(rh, walletService, dbPool, protected)
 
 	rh.Logger.Info("Starting server", "server", "server")
 	err := app.Listen(config.Port)

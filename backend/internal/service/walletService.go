@@ -3,119 +3,95 @@ package service
 import (
 	"context"
 	"ecommerce/internal/data"
-	db "ecommerce/internal/data/gen"
+	db_gen "ecommerce/internal/data/gen"
 	"errors"
 	"log/slog"
 )
 
+var ErrInsufficientFunds = errors.New("insufficient funds")
+
 type WalletService struct {
-	Store  data.WalletStore
-	Logger *slog.Logger
-	// dbConn *sql.DB // A real-world service might hold the DB connection to manage transactions
+	BaseStore data.WalletStore
+	Logger    *slog.Logger
 }
 
 func NewWalletService(store data.WalletStore, logger *slog.Logger) *WalletService {
-	return &WalletService{Store: store, Logger: logger}
+	return &WalletService{BaseStore: store, Logger: logger}
 }
 
-func (s *WalletService) CreateWallet(ctx context.Context, userID int32) (db.Wallet, error) {
-	s.Logger.Info("Attempting to create wallet", "user_id", userID)
-	wallet, err := s.Store.CreateWallet(ctx, userID)
+func (s *WalletService) GetWalletByUserID(ctx context.Context, userID int32) (db_gen.Wallet, error) {
+	s.Logger.Debug("Getting wallet by user ID", "user_id", userID)
+	return s.BaseStore.GetWalletByUserID(ctx, userID)
+}
+
+func (s *WalletService) CreateWallet(ctx context.Context, userID int32) (db_gen.Wallet, error) {
+	s.Logger.Info("Creating new wallet for user", "user_id", userID)
+	wallet, err := s.BaseStore.CreateWallet(ctx, userID)
 	if err != nil {
 		s.Logger.Error("Failed to create wallet", "user_id", userID, "error", err)
-	} else {
-		s.Logger.Info("Successfully created wallet", "user_id", userID, "wallet_id", wallet.UserID)
+		return db_gen.Wallet{}, err
 	}
-	return wallet, err
-}
-
-func (s *WalletService) GetWalletByUserID(ctx context.Context, userID int32) (db.Wallet, error) {
-	s.Logger.Debug("Fetching wallet details", "user_id", userID)
-	wallet, err := s.Store.GetWalletByUserID(ctx, userID)
-
-	if errors.Is(err, data.ErrRecordNotFound) {
-		s.Logger.Warn("Wallet not found for user", "user_id", userID)
-		return db.Wallet{}, data.ErrRecordNotFound
-	}
-
-	if err != nil {
-		s.Logger.Error("Database error during wallet lookup", "user_id", userID, "error", err)
-		return db.Wallet{}, err
-	}
-
+	s.Logger.Info("Successfully created wallet", "wallet_user_id", wallet.UserID)
 	return wallet, nil
 }
 
-func (s *WalletService) Credit(ctx context.Context, userID int32, amount int64) (db.Wallet, error) {
+func (s *WalletService) Credit(ctx context.Context, userID int32, amount int64) (db_gen.Wallet, error) {
 	s.Logger.Info("Crediting wallet", "user_id", userID, "amount", amount)
-	params := db.CreditWalletParams{
+	params := db_gen.CreditWalletParams{
 		Balance: amount,
 		UserID:  userID,
 	}
-	wallet, err := s.Store.CreditWallet(ctx, params)
-	if err != nil {
-		s.Logger.Error("Failed to credit wallet", "user_id", userID, "error", err)
-	}
-	return wallet, err
+	return s.BaseStore.CreditWallet(ctx, params)
 }
 
-func (s *WalletService) Debit(ctx context.Context, userID int32, amount int64) (db.Wallet, error) {
+func (s *WalletService) Debit(ctx context.Context, userID int32, amount int64) (db_gen.Wallet, error) {
 	s.Logger.Info("Debiting wallet", "user_id", userID, "amount", amount)
-	params := db.DebitWalletParams{
+	params := db_gen.DebitWalletParams{
 		Balance: amount,
 		UserID:  userID,
 	}
-	wallet, err := s.Store.DebitWallet(ctx, params)
-	if err != nil {
-		s.Logger.Error("Failed to debit wallet", "user_id", userID, "error", err)
-	}
-	return wallet, err
+	return s.BaseStore.DebitWallet(ctx, params)
 }
 
-func (s *WalletService) Transfer(ctx context.Context, fromUserID, toUserID int32, amount int64) error {
-	s.Logger.Info("Starting atomic transfer", "from_user", fromUserID, "to_user", toUserID, "amount", amount)
+func (s *WalletService) Transfer(ctx context.Context, txStore data.WalletStore, senderID int32, recipientID int32, amount int64) error {
+	s.Logger.Info("Attempting atomic transfer", "sender_id", senderID, "recipient_id", recipientID, "amount", amount)
 
-	debitParams := db.DebitWalletParams{
-		Balance: amount,
-		UserID:  fromUserID,
-	}
-	_, err := s.Store.DebitWallet(ctx, debitParams)
+	senderWallet, err := txStore.GetWalletByUserIDForUpdate(ctx, senderID)
 	if err != nil {
-		s.Logger.Error("Transfer failed: Debit failed for sender", "sender_id", fromUserID, "error", err)
-		return errors.Join(err, errors.New("debit failed"))
-	}
-	s.Logger.Debug("Debit successful", "user_id", fromUserID)
-
-	creditParams := db.CreditWalletParams{
-		Balance: amount,
-		UserID:  toUserID,
-	}
-	_, err = s.Store.CreditWallet(ctx, creditParams)
-	if err != nil {
-		s.Logger.Error("Transfer failed: Credit failed for recipient", "recipient_id", toUserID, "error", err)
-		return errors.Join(err, errors.New("credit failed"))
-	}
-	s.Logger.Debug("Credit successful", "user_id", toUserID)
-
-	s.Logger.Info("Atomic transfer successfully completed", "from_user", fromUserID, "to_user", toUserID, "amount", amount)
-	return nil
-}
-
-func (s *WalletService) TransactionalTransfer(ctx context.Context, tx data.WalletStore, fromUserID, toUserID int32, amount int64) error {
-	s.Logger.Info("Starting transactional transfer (via provided tx store)", "from_user", fromUserID, "to_user", toUserID, "amount", amount)
-
-	debitParams := db.DebitWalletParams{Balance: amount, UserID: fromUserID}
-	if _, err := tx.DebitWallet(ctx, debitParams); err != nil {
-		s.Logger.Error("Transactional Debit failed", "sender_id", fromUserID, "error", err)
+		if errors.Is(err, data.ErrRecordNotFound) {
+			s.Logger.Warn("Sender wallet not found for transfer", "sender_id", senderID)
+			return errors.New("sender wallet not found")
+		}
+		s.Logger.Error("Failed to get sender wallet for update", "sender_id", senderID, "error", err)
 		return err
 	}
 
-	creditParams := db.CreditWalletParams{Balance: amount, UserID: toUserID}
-	if _, err := tx.CreditWallet(ctx, creditParams); err != nil {
-		s.Logger.Error("Transactional Credit failed", "recipient_id", toUserID, "error", err)
+	if senderWallet.Balance < amount {
+		s.Logger.Warn("Insufficient funds for transfer", "sender_id", senderID, "balance", senderWallet.Balance, "requested", amount)
+		return ErrInsufficientFunds
+	}
+	s.Logger.Debug("Sender funds sufficient", "sender_id", senderID, "balance", senderWallet.Balance)
+
+	debitParams := db_gen.DebitWalletParams{
+		Balance: amount,
+		UserID:  senderID,
+	}
+	if _, err = txStore.DebitWallet(ctx, debitParams); err != nil {
+		s.Logger.Error("Failed to debit sender wallet", "sender_id", senderID, "error", err)
 		return err
 	}
+	s.Logger.Debug("Successfully debited sender", "sender_id", senderID, "amount", amount)
 
-	s.Logger.Info("Transactional transfer operations successful", "from_user", fromUserID)
+	creditParams := db_gen.CreditWalletParams{
+		Balance: amount,
+		UserID:  recipientID,
+	}
+	if _, err = txStore.CreditWallet(ctx, creditParams); err != nil {
+		s.Logger.Error("Failed to credit recipient wallet", "recipient_id", recipientID, "error", err)
+
+		return err
+	}
+	s.Logger.Debug("Successfully credited recipient", "recipient_id", recipientID, "amount", amount)
+
 	return nil
 }

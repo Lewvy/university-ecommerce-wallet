@@ -1,39 +1,13 @@
-{{define "subject"}}Welcome to Greenlight{{end}}
+{{define "subject"}}Welcome to Unimart{{end}}
+{{define "plainBody"}} Hi {{.Name}},
 
-{{define "plainBody"}}
-Hi {{.Name}},
-
-Thanks for signing up for a Greenlight account. We are excited to have you on board!
-
+Thanks for signing up for a Unimart account. We are excited to have you on board!
 For future reference, your user ID number is {{.ID}}.
-
-Please send a request to the `PUT /v1/users/activated` endpoint with the following JSON body to activate your account:
-{"token": "{{.activationToken}}"}
+Please send a request to the PUT /v1/users/activated endpoint with the following JSON body to activate your account: {"token": "{{.activationToken}}"}
 
 Thanks,
-
-The Greenlight Team
-{{end}}
-
-{{define "htmlBody"}}
-<!doctype html>
+The Unimart Team {{end}}
+{{define "htmlBody"}} <!doctype html>
 <html>
-
-<head>
-	<meta name="viewport" content="width=device-width" />
-	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-</head>
-
-<body>
-	<p>Hi {{.Name}},</p>
-	<p>Thanks for signing up for a Greenlight account. We are excited to have you on board!</p>
-	<p>For future reference, your user ID number is {{.ID}}.</p>
-	
-<p>Please send a request to the <code>PUT /v1/users/activated</code> endpoint with the following JSON body to activate your account:</p>
-<pre><code>{"token": "{{.activationToken}}"}</code></pre>
-	<p>Thanks,</p>
-	<p>The Greenlight Team</p>
-</body>
-</html>
-{{end}}
-
+<head>     <meta name="viewport" content="width=device-width" />     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" /> </head>
+<body>     <p>Hi {{.Name}},</p>     <p>Thanks for signing up for a Unimart account. We are excited to have you on board!</p>     <p>For future reference, your user ID number is {{.ID}}.</p>      <p>Please send a request to the <code>PUT /v1/users/activated</code> endpoint with the following JSON body to activate your account:</p> <pre><code>{"token": "{{.activationToken}}"}</code></pre>     <p>Thanks,</p>     <p>The Unimart Team</p> </body> </html> {{end}}

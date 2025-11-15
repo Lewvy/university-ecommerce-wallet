@@ -13,28 +13,38 @@ import (
 
 const createTransaction = `-- name: CreateTransaction :one
 INSERT INTO wallet_transactions (
-  user_id, amount, transaction_status, transaction_type, metadata
+    user_id,
+    amount,
+    transaction_type,
+    transaction_status,
+    related_user_id,
+    razorpay_order_id,
+    razorpay_payment_id
 ) VALUES (
-  $1, $2, $3, $4, $5
+    $1, $2, $3, $4, $5, $6, $7
 )
-RETURNING id, user_id, amount, transaction_status, transaction_type, metadata, created_at, updated_at
+RETURNING id, user_id, amount, transaction_status, transaction_type, related_user_id, razorpay_order_id, razorpay_payment_id, metadata, created_at, updated_at
 `
 
 type CreateTransactionParams struct {
 	UserID            int32
 	Amount            int64
-	TransactionStatus string
 	TransactionType   string
-	Metadata          []byte
+	TransactionStatus string
+	RelatedUserID     pgtype.Int4
+	RazorpayOrderID   pgtype.Text
+	RazorpayPaymentID pgtype.Text
 }
 
 func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (WalletTransaction, error) {
 	row := q.db.QueryRow(ctx, createTransaction,
 		arg.UserID,
 		arg.Amount,
-		arg.TransactionStatus,
 		arg.TransactionType,
-		arg.Metadata,
+		arg.TransactionStatus,
+		arg.RelatedUserID,
+		arg.RazorpayOrderID,
+		arg.RazorpayPaymentID,
 	)
 	var i WalletTransaction
 	err := row.Scan(
@@ -43,6 +53,9 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 		&i.Amount,
 		&i.TransactionStatus,
 		&i.TransactionType,
+		&i.RelatedUserID,
+		&i.RazorpayOrderID,
+		&i.RazorpayPaymentID,
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -50,18 +63,14 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 	return i, err
 }
 
-const getTransaction = `-- name: GetTransaction :one
-SELECT id, user_id, amount, transaction_status, transaction_type, metadata, created_at, updated_at FROM wallet_transactions
-WHERE id = $1 AND user_id = $2
+const getTransactionByOrderID = `-- name: GetTransactionByOrderID :one
+SELECT id, user_id, amount, transaction_status, transaction_type, related_user_id, razorpay_order_id, razorpay_payment_id, metadata, created_at, updated_at FROM wallet_transactions
+WHERE razorpay_order_id = $1
+LIMIT 1
 `
 
-type GetTransactionParams struct {
-	ID     int32
-	UserID int32
-}
-
-func (q *Queries) GetTransaction(ctx context.Context, arg GetTransactionParams) (WalletTransaction, error) {
-	row := q.db.QueryRow(ctx, getTransaction, arg.ID, arg.UserID)
+func (q *Queries) GetTransactionByOrderID(ctx context.Context, razorpayOrderID pgtype.Text) (WalletTransaction, error) {
+	row := q.db.QueryRow(ctx, getTransactionByOrderID, razorpayOrderID)
 	var i WalletTransaction
 	err := row.Scan(
 		&i.ID,
@@ -69,6 +78,9 @@ func (q *Queries) GetTransaction(ctx context.Context, arg GetTransactionParams) 
 		&i.Amount,
 		&i.TransactionStatus,
 		&i.TransactionType,
+		&i.RelatedUserID,
+		&i.RazorpayOrderID,
+		&i.RazorpayPaymentID,
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -76,130 +88,52 @@ func (q *Queries) GetTransaction(ctx context.Context, arg GetTransactionParams) 
 	return i, err
 }
 
-const listInitialTransactionsForUser = `-- name: ListInitialTransactionsForUser :many
-SELECT id, amount, transaction_type, transaction_status, created_at 
-FROM wallet_transactions 
-WHERE user_id = $1 
-ORDER BY 
-    created_at DESC, 
-    id DESC
-LIMIT $2
+const updateTransactionOrderID = `-- name: UpdateTransactionOrderID :one
+UPDATE wallet_transactions
+SET razorpay_order_id = $2
+WHERE id = $1
+RETURNING id, user_id, amount, transaction_status, transaction_type, related_user_id, razorpay_order_id, razorpay_payment_id, metadata, created_at, updated_at
 `
 
-type ListInitialTransactionsForUserParams struct {
-	UserID int32
-	Limit  int32
+type UpdateTransactionOrderIDParams struct {
+	ID              int32
+	RazorpayOrderID pgtype.Text
 }
 
-type ListInitialTransactionsForUserRow struct {
-	ID                int32
-	Amount            int64
-	TransactionType   string
-	TransactionStatus string
-	CreatedAt         pgtype.Timestamp
-}
-
-func (q *Queries) ListInitialTransactionsForUser(ctx context.Context, arg ListInitialTransactionsForUserParams) ([]ListInitialTransactionsForUserRow, error) {
-	rows, err := q.db.Query(ctx, listInitialTransactionsForUser, arg.UserID, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListInitialTransactionsForUserRow
-	for rows.Next() {
-		var i ListInitialTransactionsForUserRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Amount,
-			&i.TransactionType,
-			&i.TransactionStatus,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listNextTransactionsForUser = `-- name: ListNextTransactionsForUser :many
-SELECT id, amount, transaction_type, transaction_status, created_at 
-FROM wallet_transactions 
-WHERE 
-    user_id = $1 
-    AND 
-    (created_at, id) < ($2, $3) 
-ORDER BY 
-    created_at DESC, 
-    id DESC
-LIMIT $4
-`
-
-type ListNextTransactionsForUserParams struct {
-	UserID      int32
-	CreatedAt   pgtype.Timestamp
-	CreatedAt_2 pgtype.Timestamp
-	Limit       int32
-}
-
-type ListNextTransactionsForUserRow struct {
-	ID                int32
-	Amount            int64
-	TransactionType   string
-	TransactionStatus string
-	CreatedAt         pgtype.Timestamp
-}
-
-func (q *Queries) ListNextTransactionsForUser(ctx context.Context, arg ListNextTransactionsForUserParams) ([]ListNextTransactionsForUserRow, error) {
-	rows, err := q.db.Query(ctx, listNextTransactionsForUser,
-		arg.UserID,
-		arg.CreatedAt,
-		arg.CreatedAt_2,
-		arg.Limit,
+func (q *Queries) UpdateTransactionOrderID(ctx context.Context, arg UpdateTransactionOrderIDParams) (WalletTransaction, error) {
+	row := q.db.QueryRow(ctx, updateTransactionOrderID, arg.ID, arg.RazorpayOrderID)
+	var i WalletTransaction
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Amount,
+		&i.TransactionStatus,
+		&i.TransactionType,
+		&i.RelatedUserID,
+		&i.RazorpayOrderID,
+		&i.RazorpayPaymentID,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListNextTransactionsForUserRow
-	for rows.Next() {
-		var i ListNextTransactionsForUserRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Amount,
-			&i.TransactionType,
-			&i.TransactionStatus,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+	return i, err
 }
 
 const updateTransactionStatus = `-- name: UpdateTransactionStatus :one
 UPDATE wallet_transactions
-SET 
-  transaction_status = $1,
-  updated_at = CURRENT_TIMESTAMP
-WHERE id = $2
-RETURNING id, user_id, amount, transaction_status, transaction_type, metadata, created_at, updated_at
+SET transaction_status = $2, razorpay_payment_id = $3
+WHERE id = $1
+RETURNING id, user_id, amount, transaction_status, transaction_type, related_user_id, razorpay_order_id, razorpay_payment_id, metadata, created_at, updated_at
 `
 
 type UpdateTransactionStatusParams struct {
-	TransactionStatus string
 	ID                int32
+	TransactionStatus string
+	RazorpayPaymentID pgtype.Text
 }
 
 func (q *Queries) UpdateTransactionStatus(ctx context.Context, arg UpdateTransactionStatusParams) (WalletTransaction, error) {
-	row := q.db.QueryRow(ctx, updateTransactionStatus, arg.TransactionStatus, arg.ID)
+	row := q.db.QueryRow(ctx, updateTransactionStatus, arg.ID, arg.TransactionStatus, arg.RazorpayPaymentID)
 	var i WalletTransaction
 	err := row.Scan(
 		&i.ID,
@@ -207,6 +141,9 @@ func (q *Queries) UpdateTransactionStatus(ctx context.Context, arg UpdateTransac
 		&i.Amount,
 		&i.TransactionStatus,
 		&i.TransactionType,
+		&i.RelatedUserID,
+		&i.RazorpayOrderID,
+		&i.RazorpayPaymentID,
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,

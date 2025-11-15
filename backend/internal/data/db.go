@@ -27,6 +27,12 @@ func NewDBPool(dsn string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
+func NewPGInt32(i int32) pgtype.Int4 {
+	return pgtype.Int4{
+		Int32: i,
+		Valid: true,
+	}
+}
 func NewPGText(s string) pgtype.Text {
 	return pgtype.Text{
 		String: s,

@@ -66,6 +66,9 @@ type WalletTransaction struct {
 	Amount            int64
 	TransactionStatus string
 	TransactionType   string
+	RelatedUserID     pgtype.Int4
+	RazorpayOrderID   pgtype.Text
+	RazorpayPaymentID pgtype.Text
 	Metadata          []byte
 	CreatedAt         pgtype.Timestamp
 	UpdatedAt         pgtype.Timestamp

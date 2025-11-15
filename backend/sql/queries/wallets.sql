@@ -11,7 +11,7 @@ SELECT *
 FROM wallets
 WHERE user_id = $1;
 
--- name: GetWalletByUserIDForUpdate :one
+-- name: GetWalletByUserID :one
 SELECT * FROM wallets
 WHERE user_id = $1
 FOR UPDATE;

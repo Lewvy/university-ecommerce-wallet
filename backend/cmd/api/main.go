@@ -62,7 +62,7 @@ func main() {
 
 	tokenService := service.NewTokenService(tokenStore, logger)
 	userService := service.NewUserService(logger, userStore, walletStore, cacheClient, dbPool, tokenService)
-	walletService := service.NewWalletService(walletStore, logger)
+	walletService := service.NewWalletService(walletStore, dbPool, logger, "", "")
 	productService := service.NewProductService(productStore, logger)
 	cloudinaryService, err := service.NewCloudinaryService(&cfg, logger)
 	if err != nil {

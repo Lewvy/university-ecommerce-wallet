@@ -5,6 +5,8 @@ valkey-cli -p 6400 FLUSHALL
 BODY='{"name": "User1",  "email": "user1@gmail.com",  "password": "password", "phone": "7001234567"}'
 curl -X POST -i -H "Content-Type: application/json" -d "$BODY" localhost:8088/register
 
+BODY='{"name": "User2",  "email": "user2@gmail.com",  "password": "password", "phone": "8001234567"}'
+curl -X POST -i -H "Content-Type: application/json" -d "$BODY" localhost:8088/register
 
 BODY='{ "email": "user1@gmail.com",  "password": "password"}'
 curl -X POST -i -H "Content-Type: application/json" -d "$BODY" localhost:8088/login

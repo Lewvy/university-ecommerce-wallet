@@ -63,14 +63,14 @@ func main() {
 	tokenService := service.NewTokenService(tokenStore, logger)
 	userService := service.NewUserService(logger, userStore, walletStore, cacheClient, dbPool, tokenService)
 	walletService := service.NewWalletService(walletStore, dbPool, logger, "", "")
-	productService := service.NewProductService(productStore, logger)
 	cloudinaryService, err := service.NewCloudinaryService(&cfg, logger)
+	productService := service.NewProductService(productStore, cloudinaryService, dbPool, logger)
 	if err != nil {
 		logger.Error("Error initializing cloudinaryService", "error", err)
 		return
 	}
 	// authService := service.NewAuthService(logger, authStore, tokenService)
 
-	api.SetupServer(&cfg, logger, userService, tokenService, walletService, productService, cloudinaryService, dbPool)
+	api.SetupServer(&cfg, logger, userService, tokenService, walletService, productService, dbPool)
 
 }

@@ -38,6 +38,15 @@ func WalletRoutes(rh *rest.RestHandler, walletService *service.WalletService, db
 	protected.Post("/wallet/debit", h.DebitHandler)
 }
 
+func getCurrentUserID(c *fiber.Ctx) (int32, error) {
+	userID64, ok := c.Locals("authenticatedUserID").(int64)
+
+	if !ok || userID64 == 0 {
+		return 0, errors.New("unauthenticated or missing user ID in context")
+	}
+	return int32(userID64), nil
+}
+
 func (h *WalletHandler) GetBalanceHandler(c *fiber.Ctx) error {
 	ctx := c.Context()
 
@@ -47,7 +56,7 @@ func (h *WalletHandler) GetBalanceHandler(c *fiber.Ctx) error {
 		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
 	}
 
-	wallet, err := h.Svc.GetWalletByUserID(ctx, userID)
+	wallet, err := h.Svc.GetWalletByUserID(ctx, int64(userID))
 	if err != nil {
 		if errors.Is(err, data.ErrRecordNotFound) {
 			return c.Status(http.StatusNotFound).JSON(fiber.Map{"error": "wallet not found"})
@@ -127,7 +136,7 @@ func (h *WalletHandler) TransferHandler(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
 	}
 
-	if senderID == int64(input.RecipientUserID) {
+	if senderID == input.RecipientUserID {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "cannot transfer to yourself"})
 	}
 	if input.Amount <= 0 {

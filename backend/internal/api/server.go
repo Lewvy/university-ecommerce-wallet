@@ -20,7 +20,6 @@ func SetupServer(
 	tokenService *service.TokenService,
 	walletService *service.WalletService,
 	productService *service.ProductService,
-	cloudinaryService *service.CloudinaryService,
 	dbPool *pgxpool.Pool,
 ) {
 	app := fiber.New()
@@ -53,7 +52,7 @@ func SetupServer(
 
 	handlers.UserRoutes(rh, userService, protected)
 	handlers.WalletRoutes(rh, walletService, dbPool, protected)
-	handlers.ProductRoutes(rh, productService, cloudinaryService, dbPool, protected)
+	handlers.ProductRoutes(rh, productService, dbPool, protected)
 
 	rh.Logger.Info("Starting server", "server", "server")
 	err := app.Listen(config.Port)

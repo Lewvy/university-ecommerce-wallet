@@ -10,13 +10,18 @@ import (
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 )
 
+type CloudService interface {
+	UploadImage(ctx context.Context, file io.Reader, filename string) (string, error)
+}
+
+var _ CloudService = (*CloudinaryService)(nil)
+
 type CloudinaryService struct {
 	Client *cloudinary.Cloudinary
 	Logger *slog.Logger
 }
 
 func NewCloudinaryService(cfg *config.Config, logger *slog.Logger) (*CloudinaryService, error) {
-
 	cld, err := cloudinary.NewFromURL(cfg.CloudinaryURL)
 	if err != nil {
 		logger.Error("Failed to initialize Cloudinary client", "error", err)

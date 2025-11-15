@@ -21,6 +21,14 @@ type Product struct {
 	UpdatedAt   pgtype.Timestamptz
 }
 
+type ProductImage struct {
+	ID           int64
+	ProductID    int64
+	ImageUrl     string
+	DisplayOrder int32
+	CreatedAt    pgtype.Timestamptz
+}
+
 type Token struct {
 	Hash   []byte
 	UserID int64

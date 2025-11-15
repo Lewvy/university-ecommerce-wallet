@@ -22,11 +22,13 @@ type Config struct {
 	MailerPort     int
 	MailerUsername string
 	MailerPassword string
+	CloudinaryURL  string
 }
 
 func NewConfig() (cfg Config, err error) {
 	cfg.Port = os.Getenv("PORT")
 	cfg.CacheDSN = os.Getenv("CACHE_DSN")
+	cfg.CloudinaryURL = os.Getenv("CLOUDINARY_URL")
 
 	cfg.DBString = os.Getenv("GOOSE_DBSTRING")
 

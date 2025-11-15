@@ -11,7 +11,7 @@ import (
 
 type WalletStore interface {
 	CreateWallet(ctx context.Context, userID int32) (db.Wallet, error)
-	GetWalletByUserID(ctx context.Context, userID int32) (db.Wallet, error)
+	GetWalletByUserID(ctx context.Context, userID int64) (db.Wallet, error)
 	GetWalletByUserIDForUpdate(ctx context.Context, userID int32) (db.Wallet, error)
 	CreditWallet(ctx context.Context, arg db.CreditWalletParams) (db.Wallet, error)
 	DebitWallet(ctx context.Context, arg db.DebitWalletParams) (db.Wallet, error)
@@ -37,8 +37,8 @@ func (s *sqlWalletStore) CreateWallet(ctx context.Context, userID int32) (db.Wal
 	return s.q.CreateWallet(ctx, int32(userID))
 }
 
-func (s *sqlWalletStore) GetWalletByUserID(ctx context.Context, userID int32) (db.Wallet, error) {
-	wallet, err := s.q.GetBalanceById(ctx, userID)
+func (s *sqlWalletStore) GetWalletByUserID(ctx context.Context, userID int64) (db.Wallet, error) {
+	wallet, err := s.q.GetBalanceById(ctx, int32(userID))
 	if errors.Is(err, sql.ErrNoRows) {
 		return db.Wallet{}, ErrRecordNotFound
 	}

@@ -38,15 +38,6 @@ func WalletRoutes(rh *rest.RestHandler, walletService *service.WalletService, db
 	protected.Post("/wallet/debit", h.DebitHandler)
 }
 
-func getCurrentUserID(c *fiber.Ctx) (int32, error) {
-	userID64, ok := c.Locals("authenticatedUserID").(int64)
-
-	if !ok || userID64 == 0 {
-		return 0, errors.New("unauthenticated or missing user ID in context")
-	}
-	return int32(userID64), nil
-}
-
 func (h *WalletHandler) GetBalanceHandler(c *fiber.Ctx) error {
 	ctx := c.Context()
 
@@ -86,7 +77,7 @@ func (h *WalletHandler) CreditHandler(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "amount must be greater than zero"})
 	}
 
-	wallet, err := h.Svc.Credit(ctx, userID, input.Amount)
+	wallet, err := h.Svc.Credit(ctx, int32(userID), input.Amount)
 	if err != nil {
 		h.Svc.Logger.Error("Failed to credit wallet", "user_id", userID, "error", err)
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "credit operation failed"})
@@ -113,7 +104,7 @@ func (h *WalletHandler) DebitHandler(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "amount must be greater than zero"})
 	}
 
-	wallet, err := h.Svc.Debit(ctx, userID, input.Amount)
+	wallet, err := h.Svc.Debit(ctx, int32(userID), input.Amount)
 	if err != nil {
 		h.Svc.Logger.Error("Failed to debit wallet", "user_id", userID, "error", err)
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "debit operation failed (e.g., insufficient funds or constraint violation)"})
@@ -136,7 +127,7 @@ func (h *WalletHandler) TransferHandler(c *fiber.Ctx) error {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
 	}
 
-	if senderID == input.RecipientUserID {
+	if senderID == int64(input.RecipientUserID) {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "cannot transfer to yourself"})
 	}
 	if input.Amount <= 0 {
@@ -155,7 +146,7 @@ func (h *WalletHandler) TransferHandler(c *fiber.Ctx) error {
 
 	txStore := data.NewWalletStore(txQueries)
 
-	err = h.Svc.Transfer(ctx, txStore, senderID, input.RecipientUserID, input.Amount)
+	err = h.Svc.Transfer(ctx, txStore, int32(senderID), input.RecipientUserID, input.Amount)
 	if err != nil {
 
 		h.Svc.Logger.Warn("Atomic Transfer failed, transaction rolled back", "sender_id", senderID, "recipient_id", input.RecipientUserID, "error", err.Error())

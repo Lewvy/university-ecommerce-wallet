@@ -19,7 +19,7 @@ func NewWalletService(store data.WalletStore, logger *slog.Logger) *WalletServic
 	return &WalletService{BaseStore: store, Logger: logger}
 }
 
-func (s *WalletService) GetWalletByUserID(ctx context.Context, userID int32) (db_gen.Wallet, error) {
+func (s *WalletService) GetWalletByUserID(ctx context.Context, userID int64) (db_gen.Wallet, error) {
 	s.Logger.Debug("Getting wallet by user ID", "user_id", userID)
 	return s.BaseStore.GetWalletByUserID(ctx, userID)
 }

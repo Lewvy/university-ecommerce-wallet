@@ -95,7 +95,7 @@ func (s *WalletService) Credit(ctx context.Context, userID int32, amount int64) 
 	defer tx.Rollback(ctx)
 
 	txQueries := db_gen.New(tx)
-	txStore := data.NewWalletStore(txQueries) // Assumes NewWalletStore takes *db_gen.Queries
+	txStore := data.NewWalletStore(txQueries)
 
 	wallet, err := s.creditWalletInternal(ctx, txStore, userID, amount, "credit", "completed", nil)
 	if err != nil {
@@ -237,16 +237,14 @@ func (s *WalletService) CreatePaymentOrder(ctx context.Context, userID int32, am
 		return nil, err
 	}
 
-	// 4. Commit DB transaction
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
 
-	// 5. Return order details to frontend
 	s.Logger.Info("Razorpay order created", "user_id", userID, "order_id", orderID)
 	response := map[string]interface{}{
 		"order_id": orderID,
-		"amount":   amountInPaise, // Frontend needs amount in paise for checkout
+		"amount":   amountInPaise,
 		"currency": "INR",
 	}
 	return response, nil
@@ -329,7 +327,7 @@ func (s *WalletService) creditWalletInternal(
 	}
 
 	if relatedUserID != nil {
-		txParams.RelatedUserID = pgtype.Int4{Int32: *relatedUserID, Valid: true} // Correctly sets value
+		txParams.RelatedUserID = pgtype.Int4{Int32: *relatedUserID, Valid: true}
 	}
 	if _, err := txStore.CreateTransaction(ctx, txParams); err != nil {
 		s.Logger.Error("Failed to create transaction record", "user_id", userID, "error", err)

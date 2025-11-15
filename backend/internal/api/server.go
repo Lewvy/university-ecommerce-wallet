@@ -26,9 +26,11 @@ func SetupServer(
 	app := fiber.New()
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "http://localhost:3000",
-		AllowMethods: "POST, PATCH, PUT, GET, OPTIONS",
-		AllowHeaders: "Origin, Content-Type, Accept",
+		AllowOrigins:     "http://localhost:3000/",
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		ExposeHeaders:    "Authorization, Content-Length",
+		AllowCredentials: true,
 	}))
 
 	rh := &rest.RestHandler{

@@ -99,20 +99,23 @@ export default function MarketplaceView({
 	}*/
 
 	// Transform backend products to match ProductCard interface
-	const transformedProducts = products.map(product => ({
-		id: product.id,
-		name: product.name,
-		category: product.category || "Others",
-		price: product.price,
-		condition: product.condition || "Good",
-		seller: `User ${product.seller_id}`,
-		phone: "Contact via chat",
-		image: product.images && product.images.length > 0 
-			? `http://localhost:8088${product.images[0]}` 
-			: "/placeholder.svg?height=200&width=300&query=product",
-		description: product.description,
-		stock: product.stock,
-	}))
+	// Transform backend products to match ProductCard interface
+const transformedProducts = products.map((product: any) => ({
+    id: product.ID,
+    name: product.Name,
+    category: "General",                 // backend has no category
+    price: Number(product.Price),
+    condition: "Good",                   // backend has no condition
+    seller: `Seller ${product.SellerID}`, 
+    phone: "Contact seller",
+    image: product.ImageUrl 
+        ? product.ImageUrl 
+        : "/placeholder.svg?height=200&width=300&query=product",
+    description: product.Description,
+    stock: Number(product.Stock),
+}))
+
+
 
 	const allProducts = [...transformedProducts, ...postedItems]
 

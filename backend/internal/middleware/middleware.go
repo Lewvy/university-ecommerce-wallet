@@ -14,8 +14,6 @@ const LocalsUserIDKey = "authenticatedUserID"
 func AuthMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 
-		log.Printf("[AuthMiddleware] Running for path: %s", c.Path())
-
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
 			log.Println("[AuthMiddleware] FAILED: Authorization header required")
@@ -42,12 +40,7 @@ func AuthMiddleware() fiber.Handler {
 			})
 		}
 
-		log.Printf("[AuthMiddleware] SUCCESS: Token verified for UserID: %d (Type: %T)", claims.UserID, claims.UserID)
-
 		c.Locals(LocalsUserIDKey, claims.UserID)
-
-		val := c.Locals(LocalsUserIDKey)
-		log.Printf("[AuthMiddleware] Set c.Locals('%s'). Value is now: %v (Type: %T)", LocalsUserIDKey, val, val)
 
 		return c.Next()
 	}

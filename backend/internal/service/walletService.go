@@ -45,11 +45,10 @@ func NewWalletService(
 	rzpClient := razorpay.NewClient(rzpKeyID, rzpKeySecret)
 
 	return &WalletService{
-		BaseStore:    store,
-		Pool:         pool,
-		Logger:       logger,
-		RzpClient:    rzpClient,
-		RzpKeySecret: rzpKeySecret,
+		BaseStore: store,
+		Pool:      pool,
+		Logger:    logger,
+		RzpClient: rzpClient,
 	}
 }
 
@@ -75,6 +74,7 @@ func (s *WalletService) CreateWallet(ctx context.Context, userID int32) (w Walle
 		s.Logger.Error("Failed to create wallet", "user_id", userID, "error", err)
 		return w, err
 	}
+
 	s.Logger.Info("Successfully created wallet", "wallet_user_id", wallet.UserID)
 	w = Wallet{
 		UserID:         wallet.UserID,
@@ -86,7 +86,7 @@ func (s *WalletService) CreateWallet(ctx context.Context, userID int32) (w Walle
 }
 
 func (s *WalletService) Credit(ctx context.Context, userID int32, amount int64) (Wallet, error) {
-	s.Logger.Info("Attempting to credit wallet (ADMIN/TEST)", "user_id", userID, "amount", amount)
+	s.Logger.Info("Attempting to credit wallet", "user_id", userID, "amount", amount)
 
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {

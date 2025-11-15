@@ -1,54 +1,83 @@
 "use client"
 
 import { useState } from "react"
-// import SellItemForm from "./sell-item-form"
-//
-import ProfilePage from "../components/profile-page"
-//
-// import CartPage from "./cart-page"
-//
-// import CategoriesView from "../app./categories-view"
+// --- FIX: Update import paths to the new component locations ---
+import LoginPage from "../components/login-page"
+import SignupPage from "../components/signup-page"
+// --- END FIX ---
+import EmailVerificationPage from "../components/email-verification"
+import DashboardPage from "../app/dashboard/page" // Assuming this is your authenticated page
 
-// Line 11
-import LoginPage from "../app/login/page" // Relative path (depends on file location)
+// This is the main controller for your application's authentication state.
+// It decides which of the child components (Login, Signup, Verify) to show.
+
+type AuthState = "login" | "signup" | "verifying" | "authenticated"
+
+interface VerificationData {
+	userId: number;
+	email: string;
+	password: string; // Used for auto-login after verification
+	name: string;
+	phone: string;
+}
 
 export default function Page() {
-	const [isAuthenticated, setIsAuthenticated] = useState(false)
-	const [authView, setAuthView] = useState<'login' | 'signup'>('login')
+	const [authState, setAuthState] = useState<AuthState>("login")
+	const [userData, setUserData] = useState<any>(null) // Store user data after login
+	const [verificationData, setVerificationData] = useState<VerificationData | null>(null)
 
-	const [userData, setUserData] = useState({
-		username: "",
-		email: "",
-		phone: "",
-	})
-
-	const handleSignupSuccess = (name: string, email: string, phone: string) => {
-		setUserData({ username: name, email, phone })
-		setIsAuthenticated(true)
+	// This is called from SignupPage when the /register API is successful
+	const handleSignupSuccess = (data: VerificationData) => {
+		setVerificationData(data)
+		setAuthState("verifying") // Switch to the verification page
 	}
 
-	const handleLoginSuccess = (name: string, email: string, phone: string) => {
-		setUserData({ username: name, email, phone })
-		setIsAuthenticated(true)
+	// This is called from LoginPage when the /login API is successful
+	const handleLoginSuccess = (user: any) => {
+		setUserData(user)
+		setAuthState("authenticated")
 	}
 
-	if (isAuthenticated) {
-		return <HomePage userData={userData} />
+	// This is called from EmailVerificationPage when the /verify API is successful
+	const handleVerificationComplete = () => {
+		setAuthState("authenticated") // User is now fully logged in
+		setVerificationData(null) // Clear temp data
 	}
 
-	if (authView === 'signup') {
+	// Render components based on the current auth state
+
+	if (authState === "authenticated") {
+		// You would render your main application here
+		return <DashboardPage />
+	}
+
+	if (authState === "verifying" && verificationData) {
+		// Render the EmailVerificationPage
 		return (
-			<SignupPage
-				onSignupSuccess={handleSignupSuccess}
-				onSwitchToLogin={() => setAuthView('login')}
+			<EmailVerificationPage
+				email={verificationData.email}
+				userId={verificationData.userId}
+				password={verificationData.password}
+				onVerificationComplete={handleVerificationComplete}
 			/>
 		)
 	}
 
+	if (authState === "signup") {
+		// Render the SignupPage
+		return (
+			<SignupPage
+				onSignupSuccess={handleSignupSuccess}
+				onSwitchToLogin={() => setAuthState("login")}
+			/>
+		)
+	}
+
+	// The default state is "login"
 	return (
 		<LoginPage
 			onLoginSuccess={handleLoginSuccess}
-			onSwitchToSignup={() => setAuthView('signup')}
+			onSwitchToSignup={() => setAuthState("signup")}
 		/>
 	)
 }

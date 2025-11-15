@@ -1,79 +1,70 @@
 "use client"
 
-import { useState } from "react"
-import Sidebar from "./sidebar"
-import Header from "./header"
-import MarketplaceView from "./marketplace-view"
-import SellItemForm from "./sell-item-form"
-import ProfilePage from "./profile-page"
-import CartPage from "./cart-page"
-import CategoriesView from "./categories-view"
-import LoginPage from "./login-page"
+// We're assuming this is your main authenticated page (HomePage/Dashboard)
+// This file had all the broken imports.
 
-interface HomePageProps {
-	userData: {
-		username: string
-		email: string
-		phone: string
-	}
+import { useState } from "react"
+// --- FIX: Corrected all import paths ---
+import Sidebar from "../../components/sidebar"
+import Header from "../../components/header"
+import MarketplaceView from "../../components/marketplace-view"
+import SellItemForm from "../../components/sell-item-form"
+import ProfilePage from "../../components/profile-page"
+import CartPage from "../../components/cart-page"
+import CategoriesView from "../../components/categories-view"
+// This login page import was also broken
+import LoginPage from "../../components/login-page"
+// --- END FIX ---
+
+// Define a type for your user data
+interface UserData {
+	name: string;
+	username?: string; // Add optional username
+	email: string;
+	phone: string;
+	postedItems: any[]; // <-- Add postedItems to the interface
 }
 
-type CurrentView = "home" | "buy" | "sell" | "profile" | "categories" | "logout"
+interface HomePageProps {
+	userData: UserData | null; // Allow userData to be null initially
+}
 
-export default function HomePage({ userData }: HomePageProps) {
-	const [currentView, setCurrentView] = useState<CurrentView>("home")
-	const [searchQuery, setSearchQuery] = useState("")
-	const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-	const [cartItems, setCartItems] = useState<any[]>([])
-	const [postedItems, setPostedItems] = useState<any[]>([])
+// Re-creating the component structure based on the imports
+export default function DashboardPage({ userData }: HomePageProps) {
+	const [activeView, setActiveView] = useState("marketplace")
 
-	const handleAddToCart = (item: any) => {
-		setCartItems([...cartItems, item])
+	const renderView = () => {
+		switch (activeView) {
+			case "marketplace":
+				// --- FIX ---
+				// Pass the 'postedItems' from the userData prop
+				// down to the MarketplaceView component.
+				// We use `userData?.postedItems || []` as a safeguard.
+				return <MarketplaceView postedItems={userData?.postedItems || []} onAddToCart={() => { }} />
+			case "sell":
+				return <SellItemForm />
+			case "profile":
+				return <ProfilePage />
+			case "cart":
+				return <CartPage />
+			case "categories":
+				return <CategoriesView />
+			default:
+				// --- FIX ---
+				// Also apply the fix to the default case
+				return <MarketlaceView postedItems={userData?.postedItems || []} onAddToCart={() => { }} />
+		}
 	}
 
-	const handlePostItem = (item: any) => {
-		setPostedItems([...postedItems, item])
-	}
-
-	const handleCategorySelect = (category: string) => {
-		setSelectedCategory(category)
-		setCurrentView("home")
-	}
-
-	if (currentView === "logout") {
-		return <LoginPage />
-	}
-
+	// This is just a sample layout. You can replace this with your actual JSX.
 	return (
-		<div className="flex flex-col lg:flex-row h-screen bg-gray-50">
-			<Sidebar currentView={currentView} onViewChange={setCurrentView} />
-
-			<div className="flex-1 flex flex-col overflow-hidden">
-				{currentView === "home" && (
-					<Header
-						username={userData.username}
-						searchQuery={searchQuery}
-						onSearchChange={setSearchQuery}
-						selectedCategory={selectedCategory}
-						onCategoryChange={setSelectedCategory}
-					/>
-				)}
-
-				<main className="flex-1 overflow-auto p-4 md:p-6">
-					{currentView === "home" && (
-						<MarketplaceView
-							searchQuery={searchQuery}
-							selectedCategory={selectedCategory}
-							postedItems={postedItems}
-							onAddToCart={handleAddToCart}
-						/>
-					)}
-					{currentView === "buy" && <CartPage items={cartItems} />}
-					{currentView === "sell" && <SellItemForm onSubmit={handlePostItem} userData={userData} />}
-					{currentView === "profile" && <ProfilePage userData={userData} postedItems={postedItems} />}
-					{currentView === "categories" && (
-						<CategoriesView onCategorySelect={handleCategorySelect} postedItems={postedItems} />
-					)}
+		<div className="flex h-screen bg-gray-100">
+			<Sidebar onNavigate={setActiveView} />
+			<div className="flex-1 flex flex-col">
+				{/* Fix for name vs username mismatch */}
+				<Header username={userData?.username || userData?.name || "User"} />
+				<main className="flex-1 p-6 overflow-y-auto">
+					{renderView()}
 				</main>
 			</div>
 		</div>

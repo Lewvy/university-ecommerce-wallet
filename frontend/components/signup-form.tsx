@@ -1,107 +1,136 @@
 "use client"
 
-import type React from "react"
 import { useState } from "react"
 
+// This is the actual UI for the signup form.
+// It is a "dumb" component that just displays state and reports events.
+
 interface SignupFormProps {
-	onSubmit: (data: { email: string, name: string, phone: string, password: string }) => void
+	onSubmit: (data: { email: string; name: string; phone: string; password: string }) => void;
+	isLoading: boolean;
+	error: string | null;
+	showLoginButton: boolean; // <-- Prop for the fix
+	onSwitchToLogin: () => void; // <-- Prop for the fix
 }
 
-export default function SignupForm({ onSubmit }: SignupFormProps) {
-	const [formData, setFormData] = useState({
-		name: "",
-		email: "",
-		password: "",
-		phone: "",
-	})
+export default function SignupForm({ onSubmit, isLoading, error, showLoginButton, onSwitchToLogin }: SignupFormProps) {
+	// Local state for form fields
+	const [name, setName] = useState("")
+	const [email, setEmail] = useState("")
+	const [phone, setPhone] = useState("")
+	const [password, setPassword] = useState("")
+	const [confirmPassword, setConfirmPassword] = useState("")
+	const [localError, setLocalError] = useState<string | null>(null);
 
-	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const { name, value } = e.target
-		setFormData((prev) => ({ ...prev, [name]: value }))
-	}
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		setLocalError(null);
 
-	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-		e.preventDefault()
-
-		onSubmit(formData)
+		// Local form validation
+		if (password !== confirmPassword) {
+			setLocalError("Passwords do not match.");
+			return;
+		}
+		if (password.length < 8) {
+			setLocalError("Password must be at least 8 characters.");
+			return;
+		}
+		// If validation passes, call the onSubmit prop to trigger the API call
+		onSubmit({ name, email, phone, password });
 	}
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
-			<div className="w-full max-w-md">
-				<div className="bg-white rounded-lg shadow-lg p-8">
-					<div className="flex items-center justify-center mb-8">
-						<div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-400 rounded-lg flex items-center justify-center">
-							<span className="text-white font-bold text-xl">U</span>
-						</div>
-						<h1 className="text-2xl font-bold text-gray-900 ml-3">Unimart</h1>
+		<div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+			<div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+				<h2 className="text-3xl font-bold text-center text-gray-900 mb-6">Create your account</h2>
+				<form onSubmit={handleSubmit} className="space-y-4">
+					<div>
+						<label className="block text-sm font-medium text-gray-700">Full Name</label>
+						<input
+							type="text"
+							value={name}
+							onChange={(e) => setName(e.target.value)}
+							required
+							className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+						/>
+					</div>
+					<div>
+						<label className="block text-sm font-medium text-gray-700">Email</label>
+						<input
+							type="email"
+							value={email}
+							onChange={(e) => setEmail(e.target.value)}
+							required
+							className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+						/>
+					</div>
+					<div>
+						<label className="block text-sm font-medium text-gray-700">Phone</label>
+						<input
+							type="tel"
+							value={phone}
+							onChange={(e) => setPhone(e.target.value)}
+							required
+							className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+						/>
+					</div>
+					<div>
+						<label className="block text-sm font-medium text-gray-700">Password</label>
+						<input
+							type="password"
+							value={password}
+							onChange={(e) => setPassword(e.target.value)}
+							required
+							className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+						/>
+					</div>
+					<div>
+						<label className="block text-sm font-medium text-gray-700">Confirm Password</label>
+						<input
+							type="password"
+							value={confirmPassword}
+							onChange={(e) => setConfirmPassword(e.target.value)}
+							required
+							className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+						/>
 					</div>
 
-					<h2 className="text-2xl font-bold text-gray-900 mb-2">Create Account</h2>
-					<p className="text-gray-600 mb-6">Join your university marketplace</p>
+					{/* --- ERROR DISPLAY --- */}
+					{(error || localError) && (
+						<div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+							<p className="text-sm text-red-600 font-medium">{error || localError}</p>
 
-					<form onSubmit={handleSubmit} className="space-y-4">
-						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
-							<input
-								type="text"
-								name="name"
-								value={formData.name}
-								onChange={handleChange}
-								placeholder="Enter your username"
-								required
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-							/>
+							{/* --- THE FIX: Conditional Login Button --- */}
+							{showLoginButton && (
+								<button
+									type="button"
+									onClick={onSwitchToLogin} // This calls the prop
+									className="mt-2 w-full bg-green-500 text-white font-semibold py-2 rounded-lg hover:bg-green-600"
+								>
+									Go to Login
+								</button>
+							)}
 						</div>
-						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">University Email</label>
-							<input
-								type="email"
-								name="email"
-								value={formData.email}
-								onChange={handleChange}
-								placeholder="your.name@gmail.com"
-								required
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-							/>
-						</div>
-						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-							<input
-								type="password"
-								name="password"
-								value={formData.password}
-								onChange={handleChange}
-								placeholder="Enter your password"
-								required
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-							/>
-						</div>
-						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-							<input
-								type="tel"
-								name="phone"
-								value={formData.phone}
-								onChange={handleChange}
-								placeholder="+91 9876543210"
-								required
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-							/>
-						</div>
+					)}
 
-						<button
-							type="submit"
-							className="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white font-semibold py-2 rounded-lg hover:shadow-lg transition-shadow"
-						>
-							Create Account
-						</button>
-					</form>
+					<button
+						type="submit"
+						disabled={isLoading}
+						className="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:shadow-lg transition-shadow disabled:opacity-50"
+					>
+						{isLoading ? "Creating Account..." : "Create Account"}
+					</button>
+				</form>
 
-					<p className="text-center text-gray-600 mt-4">
-						Already have an account? <span className="text-blue-600 font-semibold cursor-pointer">Login</span>
-					</p>
-				</div>
+				<p className="text-center text-sm text-gray-600 mt-6">
+					Already have an account?{" "}
+					<button
+						onClick={onSwitchToLogin} // This calls the prop
+						className="font-semibold text-blue-600 hover:underline"
+					>
+						Log in
+					</button>
+				</p>
 			</div>
 		</div>
 	)

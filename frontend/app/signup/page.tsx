@@ -1,0 +1,338 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import EmailVerificationPage from "../../components/email-verification"
+import SignupForm from "../../components/signup-form"
+
+interface FormData {
+	email: string;
+	name: string;
+	phone: string;
+	password: string;
+}
+
+export default function SignupPage() {
+	const router = useRouter()
+
+	const [step, setStep] = useState<"form" | "verification" | "success">("form")
+	const [userEmail, setUserEmail] = useState("")
+	const [userName, setUserName] = useState("")
+	const [userPhone, setUserPhone] = useState("")
+	const [password, setPassword] = useState("")
+	const [userId, setUserId] = useState<number | null>(null)
+
+	// ------------------------------
+	// SIGNUP FORM SUBMISSION
+	// ------------------------------
+	const handleFormSubmit = async (data: FormData) => {
+		try {
+			console.log("Sending registration request:", data)
+
+			const response = await fetch("http://localhost:8088/register", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(data),
+			})
+
+			const responseData = await response.json()
+			console.log("Registration response:", response.status, responseData)
+
+			if (response.ok) {
+				// Save user info
+				setUserEmail(data.email)
+				setUserName(data.name)
+				setUserPhone(data.phone)
+				setPassword(data.password)
+
+				// Save userId if backend returns it
+				if (responseData.id) {
+					setUserId(responseData.id)
+				} else if (responseData.user && responseData.user.id) {
+					setUserId(responseData.user.id)
+				} else {
+					console.warn("⚠️ Backend returned no userId")
+				}
+
+				setStep("verification") // Move to OTP screen
+			} else {
+				alert(responseData.message || "Registration failed. Try again.")
+			}
+		} catch (err) {
+			console.error("Network error:", err)
+			alert("Network error. Try again.")
+		}
+	}
+
+	// ------------------------------
+	// AFTER SUCCESSFUL VERIFICATION
+	// ------------------------------
+	const handleVerificationComplete = async () => {
+		console.log("Verification complete, preparing to redirect...")
+		
+		// Store user data in sessionStorage before redirecting
+		const userInfo = {
+			username: userName,
+			email: userEmail,
+			phone: userPhone,
+			id: userId
+		}
+		
+		console.log("Storing user info:", userInfo)
+		sessionStorage.setItem('user', JSON.stringify(userInfo))
+		
+		// Show success screen briefly
+		setStep("success")
+
+		// Wait a bit then redirect
+		await new Promise(resolve => setTimeout(resolve, 1500))
+		
+		console.log("Redirecting to dashboard...")
+		router.push("/dashboard")
+	}
+
+	// ------------------------------
+	// RENDERING SECTIONS
+	// ------------------------------
+
+	if (step === "form") {
+		return <SignupForm onSubmit={handleFormSubmit} />
+	}
+
+	if (step === "verification") {
+		return (
+			<EmailVerificationPage
+				email={userEmail}
+				userId={userId}
+				password={password}
+				onVerificationComplete={handleVerificationComplete}
+			/>
+		)
+	}
+
+	// SUCCESS PAGE
+	return (
+		<div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
+			<div className="text-center">
+				<div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+					<svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+					</svg>
+				</div>
+				<h2 className="text-3xl font-bold text-gray-900 mb-2">Signup Successful!</h2>
+				<p className="text-gray-600">Redirecting to dashboard...</p>
+			</div>
+		</div>
+	)
+}
+
+
+/*"use client"
+
+import { useState } from "react"
+import EmailVerificationPage from "../../components/email-verification"
+import SignupForm from "../../components/signup-form"
+
+interface SignupPageProps {
+	onSignupSuccess: (name: string, email: string, phone: string) => void
+}
+
+interface FormData {
+	email: string;
+	name: string;
+	phone: string;
+	password: string;
+}
+
+export default function SignupPage({ onSignupSuccess }: SignupPageProps) {
+	const [step, setStep] = useState<"form" | "verification" | "success">("form")
+	const [userEmail, setUserEmail] = useState("")
+	const [userName, setUserName] = useState("")
+	const [userPhone, setUserPhone] = useState("")
+	const [password, setPassword] = useState("")
+	const [userId, setUserId] = useState<number | null>(null)
+
+	const handleFormSubmit = async (data: FormData) => {
+		try {
+			console.log("Sending registration request with data:", data)
+			
+			const response = await fetch("http://localhost:8088/register", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(data),
+			});
+
+			const responseData = await response.json();
+			console.log("Registration response:", response.status, responseData)
+
+			if (response.ok) {
+				console.log("Registration Success:", responseData);
+
+				// Store user information
+				setUserEmail(data.email)
+				setUserName(data.name)
+				setUserPhone(data.phone)
+				setPassword(data.password)
+				
+				// Store user ID if returned by backend
+				if (responseData.id) {
+					setUserId(responseData.id)
+					console.log("User ID stored:", responseData.id)
+				} else if (responseData.user && responseData.user.id) {
+					setUserId(responseData.user.id)
+					console.log("User ID stored from user object:", responseData.user.id)
+				} else {
+					console.warn("No user ID returned from registration")
+				}
+
+				setStep("verification")
+			} else {
+				console.error("Registration Failed:", responseData);
+
+				let errorMessage = "Registration failed. Please try again.";
+				if (responseData.message) {
+					errorMessage = responseData.message;
+				} else if (responseData.fields) {
+					const fieldErrors = Object.entries(responseData.fields)
+						.map(([field, msg]) => `${field}: ${msg}`)
+						.join(', ');
+					errorMessage = `Validation Error: ${fieldErrors}`;
+				}
+
+				alert(errorMessage);
+			}
+		} catch (error) {
+			console.error("Network Error:", error);
+			alert("A network error occurred. Check your server connection.");
+		}
+	}
+
+	const handleVerificationComplete = () => {
+		setStep("success")
+		setTimeout(() => {
+			onSignupSuccess(userName, userEmail, userPhone)
+		}, 2000)
+	}
+
+	if (step === "form") {
+		return <SignupForm onSubmit={handleFormSubmit} />
+	}
+
+	if (step === "verification") {
+		return <EmailVerificationPage 
+			email={userEmail}
+			userId={userId}
+			password={password}
+			onVerificationComplete={handleVerificationComplete} 
+		/>
+	}
+
+	return (
+		<div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
+			<div className="text-center">
+				<div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+					<svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+					</svg>
+				</div>
+				<h2 className="text-3xl font-bold text-gray-900 mb-2">Signup Successful!</h2>
+				<p className="text-gray-600">Redirecting to home...</p>
+			</div>
+		</div>
+	)
+}
+
+/*"use client"
+
+import { useState } from "react"
+import EmailVerificationPage from "./email-verification"
+import SignupForm from "./signup-form"
+
+interface SignupPageProps {
+	onSignupSuccess: (username: string, email: string, phone: string) => void
+}
+
+interface FormData {
+	email: string;
+	username: string;
+	phone: string;
+	password: string;
+}
+
+export default function SignupPage({ onSignupSuccess }: SignupPageProps) {
+	const [step, setStep] = useState<"form" | "verification" | "success">("form")
+	const [userEmail, setUserEmail] = useState("")
+	const [username, setUsername] = useState("")
+	const [userPhone, setUserPhone] = useState("")
+	const [password, setPassword] = useState("")
+
+	const handleFormSubmit = async (data: FormData) => {
+		try {
+			const response = await fetch("http://localhost:8088/register", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(data),
+			});
+
+			const responseData = await response.json();
+
+			if (response.ok) {
+				console.log("Registration Success:", responseData);
+
+				setUserEmail(data.email)
+				setUsername(data.username)
+				setUserPhone(data.phone)
+				setPassword(data.password)
+
+				setStep("verification")
+			} else {
+				console.error("Registration Failed:", responseData);
+
+				let errorMessage = "Registration failed. Please try again.";
+				if (responseData.message) {
+					errorMessage = responseData.message;
+				} else if (responseData.fields) {
+					errorMessage = `Validation Error: ${Object.values(responseData.fields).join(', ')}`;
+				}
+
+				alert(errorMessage);
+			}
+		} catch (error) {
+			console.error("Network Error:", error);
+			alert("A network error occurred. Check your server connection.");
+		}
+	}
+
+	const handleVerificationComplete = () => {
+		setStep("success")
+		setTimeout(() => {
+			onSignupSuccess(username, userEmail, userPhone)
+		}, 2000)
+	}
+
+	if (step === "form") {
+		return <SignupForm onSubmit={handleFormSubmit} />
+	}
+
+	if (step === "verification") {
+		return <EmailVerificationPage email={userEmail} onVerificationComplete={handleVerificationComplete} />
+	}
+
+	return (
+		<div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
+			<div className="text-center">
+				<div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+					<svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+					</svg>
+				</div>
+				<h2 className="text-3xl font-bold text-gray-900 mb-2">Signup Successful!</h2>
+				<p className="text-gray-600">Redirecting to home...</p>
+			</div>
+		</div>
+	)
+}*/

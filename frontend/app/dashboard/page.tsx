@@ -117,7 +117,7 @@ export default function DashboardPage() {
 
 					{currentView === "buy" && <CartPage items={cartItems} />}
 					{currentView === "sell" && <SellItemForm onSubmit={handlePostItem} userData={userData} />}
-					{currentView === "profile" && <ProfilePage userData={userData} postedItems={postedItems} />}
+					{currentView === "profile" && <ProfilePage userData={userData} />}
 					{currentView === "categories" && (
 						<CategoriesView onCategorySelect={handleCategorySelect} postedItems={postedItems} />
 					)}

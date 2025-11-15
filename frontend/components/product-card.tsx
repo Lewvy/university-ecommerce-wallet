@@ -44,7 +44,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
         </div>
 
         <div className="border-t border-gray-200 pt-3 mb-3 mt-auto">
-          <p className="text-base md:text-lg font-bold text-blue-600 mb-2">₹{product.price.toLocaleString()}</p>
+          <p className="text-base md:text-lg font-bold text-blue-600 mb-2">₹{Number(product.price).toLocaleString()}</p>
           <p className="text-xs text-gray-500 break-all">{product.phone}</p>
         </div>
 

@@ -19,6 +19,8 @@ type ProductStore interface {
 	CreateProductImage(ctx context.Context, arg db.CreateProductImageParams) error
 	GetProductByID(ctx context.Context, id int64) (db.Product, error)
 	GetProductImages(ctx context.Context, productID int64) ([]db.ProductImage, error)
+	GetProductsBySeller(ctx context.Context, sellerID int64) ([]db.Product, error)
+
 	GetAllProducts(ctx context.Context) ([]db.Product, error)
 	WithTx(tx pgx.Tx) ProductStore
 }
@@ -31,6 +33,17 @@ func NewProductStore(queries *db.Queries) ProductStore {
 	return &sqlProductStore{
 		q: queries,
 	}
+}
+
+func (s *sqlProductStore) GetProductsBySeller(ctx context.Context, sellerID int64) ([]db.Product, error) {
+	products, err := s.q.GetProductsBySeller(ctx, sellerID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return []db.Product{}, nil
+		}
+		return nil, err
+	}
+	return products, nil
 }
 
 func (s *sqlProductStore) WithTx(tx pgx.Tx) ProductStore {

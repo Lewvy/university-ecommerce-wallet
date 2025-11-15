@@ -82,7 +82,7 @@ func (s *ProductService) UploadImagesConcurrent(
 		for i, fh := range files {
 			select {
 			case <-ctx.Done():
-				break
+				return
 			default:
 				jobs <- job{idx: i, file: fh}
 			}
@@ -101,17 +101,12 @@ func (s *ProductService) UploadImagesConcurrent(
 	for r := range results {
 		received++
 		if r.err != nil {
-
 			if firstErr == nil {
 				firstErr = r.err
 			}
 			continue
 		}
 		imageURLs[r.idx] = r.url
-
-		if received == len(files) && firstErr == nil {
-
-		}
 	}
 
 	if firstErr != nil {
@@ -321,4 +316,16 @@ func (s *ProductService) GetProductDetails(ctx context.Context, productID int64)
 	details.Images = images
 
 	return details, nil
+}
+
+func (s *ProductService) GetProductsBySeller(ctx context.Context, sellerID int64) ([]db.Product, error) {
+	s.Logger.Info("Fetching products by seller", "seller_id", sellerID)
+
+	products, err := s.Store.GetProductsBySeller(ctx, sellerID)
+	if err != nil {
+		s.Logger.Error("Failed to get products by seller", "error", err)
+		return nil, err
+	}
+
+	return products, nil
 }

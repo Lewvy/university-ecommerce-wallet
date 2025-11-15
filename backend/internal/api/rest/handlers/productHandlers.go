@@ -29,8 +29,10 @@ func ProductRoutes(
 	}
 
 	rh.App.Get("/products", h.GetAllProductsHandler)
+	protected.Get("/products/mine", h.GetMyProductsHandler)
 	rh.App.Get("/products/:id", h.GetProductByIDHandler)
 	protected.Post("/products", h.CreateProductHandler)
+
 }
 
 func (h *ProductHandler) GetAllProductsHandler(c *fiber.Ctx) error {
@@ -121,4 +123,25 @@ func (h *ProductHandler) CreateProductHandler(c *fiber.Ctx) error {
 
 	h.Svc.Logger.Info("Product created successfully", "product_id", newProduct.ID, "seller_id", sellerID)
 	return c.Status(http.StatusCreated).JSON(newProduct)
+}
+
+func (h *ProductHandler) GetMyProductsHandler(c *fiber.Ctx) error {
+	ctx := c.Context()
+
+	userID, err := getCurrentUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "unauthorized",
+		})
+	}
+
+	products, err := h.Svc.GetProductsBySeller(ctx, int64(userID))
+	if err != nil {
+		h.Svc.Logger.Error("Failed to get user's products", "error", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "could not retrieve products",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(products)
 }

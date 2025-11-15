@@ -32,3 +32,9 @@ ORDER BY display_order ASC;
 SELECT * FROM products
 WHERE is_active = TRUE
 ORDER BY created_at DESC;
+
+
+-- name: GetProductsBySeller :many
+SELECT * FROM products
+WHERE seller_id = $1
+ORDER BY created_at DESC;

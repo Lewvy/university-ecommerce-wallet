@@ -170,3 +170,40 @@ func (q *Queries) GetProductImages(ctx context.Context, productID int64) ([]Prod
 	}
 	return items, nil
 }
+
+const getProductsBySeller = `-- name: GetProductsBySeller :many
+SELECT id, seller_id, name, description, price, stock, image_url, is_active, created_at, updated_at FROM products
+WHERE seller_id = $1
+ORDER BY created_at DESC
+`
+
+func (q *Queries) GetProductsBySeller(ctx context.Context, sellerID int64) ([]Product, error) {
+	rows, err := q.db.Query(ctx, getProductsBySeller, sellerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Product
+	for rows.Next() {
+		var i Product
+		if err := rows.Scan(
+			&i.ID,
+			&i.SellerID,
+			&i.Name,
+			&i.Description,
+			&i.Price,
+			&i.Stock,
+			&i.ImageUrl,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

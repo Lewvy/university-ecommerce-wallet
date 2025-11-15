@@ -7,20 +7,16 @@ export default function Page() {
 	const router = useRouter()
 
 	useEffect(() => {
-		// Check if user is already logged in
 		const user = sessionStorage.getItem('user')
 		const token = sessionStorage.getItem('access_token')
 
 		if (user && token) {
-			// User is logged in, go to dashboard
 			router.push('/dashboard')
 		} else {
-			// User is not logged in, go to login
 			router.push('/login')
 		}
 	}, [router])
 
-	// Show loading while redirecting
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center">
 			<div className="text-center">

@@ -20,6 +20,13 @@ interface WalletPageProps {
 	}
 }
 
+// Declare Razorpay on window
+declare global {
+	interface Window {
+		Razorpay: any
+	}
+}
+
 export default function WalletPage({ userData }: WalletPageProps) {
 	const [walletData, setWalletData] = useState<WalletData | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
@@ -28,16 +35,43 @@ export default function WalletPage({ userData }: WalletPageProps) {
 	const [addAmount, setAddAmount] = useState("")
 	const [recipientId, setRecipientId] = useState("")
 	const [transferAmount, setTransferAmount] = useState("")
+	const [paymentLoading, setPaymentLoading] = useState(false)
 
 	useEffect(() => {
 		fetchWalletData()
+		loadRazorpayScript()
 	}, [])
+
+	const loadRazorpayScript = () => {
+		return new Promise((resolve) => {
+			// Check if script already loaded
+			if (window.Razorpay) {
+				resolve(true)
+				return
+			}
+
+			const script = document.createElement('script')
+			script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+			script.onload = () => resolve(true)
+			script.onerror = () => resolve(false)
+			document.body.appendChild(script)
+		})
+	}
 
 	const fetchWalletData = async () => {
 		setIsLoading(true)
 		try {
 			const token = localStorage.getItem("access_token")
-			
+
+			console.log("Fetching wallet - Token found:", token ? "Yes" : "No")
+
+			if (!token) {
+				console.error("No access token found")
+				alert("You are not logged in. Please login first.")
+				setIsLoading(false)
+				return
+			}
+
 			const response = await fetch("http://localhost:8088/wallet/balance", {
 				headers: {
 					"Authorization": `Bearer ${token}`,
@@ -63,37 +97,121 @@ export default function WalletPage({ userData }: WalletPageProps) {
 	}
 
 	const handleAddMoney = async () => {
-		const amount = parseInt(addAmount)
-		if (!amount || amount <= 0) {
+		const amountInRupees = parseFloat(addAmount)
+
+		if (!amountInRupees || amountInRupees <= 0) {
 			alert("Please enter a valid amount")
 			return
 		}
 
+		if (amountInRupees < 1) {
+			alert("Minimum amount is ₹1")
+			return
+		}
+
+		if (amountInRupees > 100000) {
+			alert("Maximum amount is ₹1,00,000")
+			return
+		}
+
+		// Convert to paise for backend
+		const amountInPaise = Math.round(amountInRupees * 100)
+
+		setPaymentLoading(true)
+
 		try {
+			// Check if Razorpay script is loaded
+			if (!window.Razorpay) {
+				const loaded = await loadRazorpayScript()
+				if (!loaded) {
+					alert("Failed to load payment gateway. Please refresh and try again.")
+					setPaymentLoading(false)
+					return
+				}
+			}
+
+			// Get token from localStorage
 			const token = localStorage.getItem("access_token")
-			const response = await fetch("http://localhost:8088/wallet/credit", {
+
+			// Debug: Log token presence
+			console.log("Token found:", token ? "Yes" : "No")
+			console.log("Token length:", token?.length || 0)
+
+			if (!token) {
+				alert("You are not logged in. Please login first.")
+				setPaymentLoading(false)
+				return
+			}
+
+			// Create order on backend
+			const response = await fetch("http://localhost:8088/wallet/create-topup-order", {
 				method: "POST",
 				headers: {
 					"Authorization": `Bearer ${token}`,
 					"Content-Type": "application/json"
 				},
-				body: JSON.stringify({ amount })
+				body: JSON.stringify({ amount: amountInPaise })
 			})
 
-			if (response.ok) {
-				const data = await response.json()
-				console.log("Credit successful:", data)
-				setWalletData(data)
-				setAddAmount("")
-				setShowAddMoney(false)
-				alert("Money added successfully!")
-			} else {
-				const error = await response.json()
-				alert(error.error || "Failed to add money")
+			console.log("Response status:", response.status)
+
+			if (!response.ok) {
+				throw new Error("Failed to create payment order")
 			}
+
+			const orderData = await response.json()
+
+			// Configure Razorpay options
+			const options = {
+				key: orderData.key_id,
+				amount: orderData.amount,
+				currency: orderData.currency,
+				name: "Your Store",
+				description: "Wallet Top-up",
+				order_id: orderData.order_id,
+				handler: async function(response: any) {
+					// Payment successful
+					console.log("Payment successful:", response)
+					alert("Payment successful! Your wallet will be credited shortly.")
+					setAddAmount("")
+					setShowAddMoney(false)
+
+					// Refresh balance after 2 seconds to allow webhook processing
+					setTimeout(() => {
+						fetchWalletData()
+					}, 2000)
+				},
+				prefill: {
+					name: userData.username || "User",
+					email: userData.email || "",
+					contact: userData.phone || ""
+				},
+				theme: {
+					color: "#3b82f6"
+				},
+				modal: {
+					ondismiss: function() {
+						console.log("Payment cancelled by user")
+						setPaymentLoading(false)
+					}
+				}
+			}
+
+			// Open Razorpay checkout
+			const razorpay = new window.Razorpay(options)
+
+			razorpay.on('payment.failed', function(response: any) {
+				alert(`Payment failed: ${response.error.description}`)
+				setPaymentLoading(false)
+			})
+
+			razorpay.open()
+			setPaymentLoading(false)
+
 		} catch (error) {
-			console.error("Error adding money:", error)
-			alert("Network error. Please try again.")
+			console.error("Error initiating payment:", error)
+			alert("Failed to initiate payment. Please try again.")
+			setPaymentLoading(false)
 		}
 	}
 
@@ -112,7 +230,17 @@ export default function WalletPage({ userData }: WalletPageProps) {
 		}
 
 		try {
-			const token = localStorage.getItem("access_token")
+			// Get token - check both possible storage locations
+			let token = sessionStorage.getItem("access_token")
+			if (!token) {
+				token = localStorage.getItem("access_token")
+			}
+
+			if (!token) {
+				alert("You are not logged in. Please login first.")
+				return
+			}
+
 			const response = await fetch("http://localhost:8088/wallet/transfer", {
 				method: "POST",
 				headers: {
@@ -132,7 +260,7 @@ export default function WalletPage({ userData }: WalletPageProps) {
 				setRecipientId("")
 				setShowTransfer(false)
 				alert(data.message || "Transfer successful!")
-				fetchWalletData() // Refresh balance
+				fetchWalletData()
 			} else {
 				const error = await response.json()
 				alert(error.error || "Failed to transfer money")
@@ -142,6 +270,9 @@ export default function WalletPage({ userData }: WalletPageProps) {
 			alert("Network error. Please try again.")
 		}
 	}
+
+	// Quick amount buttons (in rupees)
+	const quickAmounts = [5, 10, 20, 50, 100, 500]
 
 	if (isLoading) {
 		return (
@@ -179,10 +310,10 @@ export default function WalletPage({ userData }: WalletPageProps) {
 				<div className="flex items-center justify-between text-white">
 					<div>
 						<p className="text-blue-100 text-sm mb-2">Available Balance</p>
-						<h2 className="text-4xl font-bold">₹{walletData.balance.toFixed(2)}</h2>
+						<h2 className="text-4xl font-bold">₹{(walletData.balance / 100).toFixed(2)}</h2>
 						<div className="mt-4 space-y-1">
-							<p className="text-blue-100 text-xs">Lifetime Earned: ₹{walletData.lifetime_earned.toFixed(2)}</p>
-							<p className="text-blue-100 text-xs">Lifetime Spent: ₹{walletData.lifetime_spent.toFixed(2)}</p>
+							<p className="text-blue-100 text-xs">Lifetime Earned: ₹{(walletData.lifetime_earned / 100).toFixed(2)}</p>
+							<p className="text-blue-100 text-xs">Lifetime Spent: ₹{(walletData.lifetime_spent / 100).toFixed(2)}</p>
 						</div>
 					</div>
 					<div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
@@ -213,23 +344,63 @@ export default function WalletPage({ userData }: WalletPageProps) {
 				</div>
 			</div>
 
-			{/* Add Money Form */}
+			{/* Add Money Form - Razorpay */}
 			{showAddMoney && (
 				<div className="bg-white rounded-lg shadow-md p-6 mb-6">
 					<h3 className="text-xl font-semibold text-gray-900 mb-4">Add Money to Wallet</h3>
+
+					{/* Quick Amount Selection */}
+					<div className="mb-4">
+						<p className="text-sm text-gray-600 mb-2">Quick Select:</p>
+						<div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+							{quickAmounts.map((amt) => (
+								<button
+									key={amt}
+									onClick={() => setAddAmount(amt.toString())}
+									className={`px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium ${addAmount === amt.toString()
+										? 'border-blue-500 bg-blue-50 text-blue-700'
+										: 'border-gray-200 hover:border-blue-300'
+										}`}
+								>
+									₹{amt}
+								</button>
+							))}
+						</div>
+					</div>
+
+					{/* Custom Amount Input */}
+					<div className="mb-4">
+						<p className="text-sm text-gray-600 mb-2">Or enter custom amount:</p>
+						<div className="relative">
+							<span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+							<input
+								type="number"
+								value={addAmount}
+								onChange={(e) => setAddAmount(e.target.value)}
+								placeholder="Enter amount"
+								min="1"
+								max="100000"
+								className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+							/>
+						</div>
+						<p className="text-xs text-gray-500 mt-1">Min: ₹1 | Max: ₹1,00,000</p>
+					</div>
+
+					{/* Action Buttons */}
 					<div className="flex gap-4">
-						<input
-							type="number"
-							value={addAmount}
-							onChange={(e) => setAddAmount(e.target.value)}
-							placeholder="Enter amount (e.g., 500)"
-							className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-						/>
 						<button
 							onClick={handleAddMoney}
-							className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+							disabled={paymentLoading || !addAmount}
+							className="flex-1 bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
 						>
-							Add
+							{paymentLoading ? (
+								<>
+									<div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+									Processing...
+								</>
+							) : (
+								'Proceed to Payment'
+							)}
 						</button>
 						<button
 							onClick={() => setShowAddMoney(false)}
@@ -237,6 +408,14 @@ export default function WalletPage({ userData }: WalletPageProps) {
 						>
 							Cancel
 						</button>
+					</div>
+
+					{/* Security Note */}
+					<div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
+						<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+						</svg>
+						<span>Payments are processed securely via Razorpay</span>
 					</div>
 				</div>
 			)}
@@ -327,7 +506,7 @@ export default function WalletPage({ userData }: WalletPageProps) {
 					<div className="flex items-center justify-between">
 						<div>
 							<p className="text-gray-500 text-sm mb-1">Current Balance</p>
-							<p className="text-2xl font-bold text-gray-900">₹{walletData.balance}</p>
+							<p className="text-2xl font-bold text-gray-900">₹{(walletData.balance / 100).toFixed(2)}</p>
 						</div>
 						<div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
 							<svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -341,7 +520,7 @@ export default function WalletPage({ userData }: WalletPageProps) {
 					<div className="flex items-center justify-between">
 						<div>
 							<p className="text-gray-500 text-sm mb-1">Total Earned</p>
-							<p className="text-2xl font-bold text-green-600">₹{walletData.lifetime_earned}</p>
+							<p className="text-2xl font-bold text-green-600">₹{(walletData.lifetime_earned / 100).toFixed(2)}</p>
 						</div>
 						<div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
 							<svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -355,7 +534,7 @@ export default function WalletPage({ userData }: WalletPageProps) {
 					<div className="flex items-center justify-between">
 						<div>
 							<p className="text-gray-500 text-sm mb-1">Total Spent</p>
-							<p className="text-2xl font-bold text-red-600">₹{walletData.lifetime_spent}</p>
+							<p className="text-2xl font-bold text-red-600">₹{(walletData.lifetime_spent / 100).toFixed(2)}</p>
 						</div>
 						<div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
 							<svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -374,9 +553,10 @@ export default function WalletPage({ userData }: WalletPageProps) {
 					</svg>
 					<div className="text-sm text-blue-800">
 						<p className="font-semibold mb-1">Note:</p>
-						<p>• Use the Credit endpoint to add money to your wallet</p>
-						<p>• Use Transfer to send money to other users (you'll need their User ID)</p>
+						<p>• Add money securely using Razorpay (UPI, Cards, Net Banking)</p>
+						<p>• Transfer money to other users using their User ID</p>
 						<p>• All amounts are in Indian Rupees (₹)</p>
+						<p>• Your wallet will be credited within seconds after successful payment</p>
 					</div>
 				</div>
 			</div>

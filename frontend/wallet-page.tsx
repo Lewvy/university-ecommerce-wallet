@@ -37,7 +37,7 @@ export default function WalletPage({ userData }: WalletPageProps) {
 		setIsLoading(true)
 		try {
 			const token = sessionStorage.getItem("access_token")
-			
+
 			const response = await fetch("http://localhost:8088/wallet/balance", {
 				headers: {
 					"Authorization": `Bearer ${token}`,

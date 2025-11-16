@@ -22,6 +22,90 @@ export default function SignupPage() {
 	const [password, setPassword] = useState("")
 	const [userId, setUserId] = useState<number | null>(null)
 
+	const handleFormSubmit = async (data: FormData) => {
+		try {
+			const response = await fetch("http://localhost:8088/register", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(data),
+			})
+
+			const responseData = await response.json()
+
+			if (response.ok) {
+				setUserEmail(data.email)
+				setUserName(data.name)
+				setUserPhone(data.phone)
+				setPassword(data.password)
+
+				if (responseData.id) setUserId(responseData.id)
+				setStep("verification")
+			} else {
+				alert(responseData.message || "Registration failed.")
+			}
+		} catch {
+			alert("Network error.")
+		}
+	}
+
+	const handleVerificationComplete = async () => {
+		setStep("success")
+
+		// wait and redirect
+		await new Promise(res => setTimeout(res, 1500))
+
+		// DO NOT STORE USER DETAILS HERE
+		// let login handle data from JWT
+		router.push("/login")
+	}
+
+	if (step === "form") {
+		return <SignupForm onSubmit={handleFormSubmit} />
+	}
+
+	if (step === "verification") {
+		return (
+			<EmailVerificationPage
+				email={userEmail}
+				userId={userId}
+				password={password}
+				onVerificationComplete={handleVerificationComplete}
+			/>
+		)
+	}
+
+	return (
+		<div className="min-h-screen flex items-center justify-center">
+			<h2>Signup Successful! Redirecting...</h2>
+		</div>
+	)
+}
+
+
+/*"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import EmailVerificationPage from "../../components/email-verification"
+import SignupForm from "../../components/signup-form"
+
+interface FormData {
+	email: string;
+	name: string;
+	phone: string;
+	password: string;
+}
+
+export default function SignupPage() {
+	const router = useRouter()
+
+	const [step, setStep] = useState<"form" | "verification" | "success">("form")
+	const [userEmail, setUserEmail] = useState("")
+	const [userName, setUserName] = useState("")
+	const [userPhone, setUserPhone] = useState("")
+	const [password, setPassword] = useState("")
+	const [userId, setUserId] = useState<number | null>(null)
+
 	
 	const handleFormSubmit = async (data: FormData) => {
 		try {
@@ -89,9 +173,6 @@ export default function SignupPage() {
 		router.push("/login")
 	}
 
-	// ------------------------------
-	// RENDERING SECTIONS
-	// ------------------------------
 
 	if (step === "form") {
 		return <SignupForm onSubmit={handleFormSubmit} />
@@ -122,4 +203,4 @@ export default function SignupPage() {
 			</div>
 		</div>
 	)
-}
+}*/

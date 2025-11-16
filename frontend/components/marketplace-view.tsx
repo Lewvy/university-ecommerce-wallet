@@ -103,17 +103,16 @@ export default function MarketplaceView({
 const transformedProducts = products.map((product: any) => ({
     id: product.ID,
     name: product.Name,
-    category: "General",                 // backend has no category
+    category: product.Category || "Others",
     price: Number(product.Price),
-    condition: "Good",                   // backend has no condition
-    seller: `Seller ${product.SellerID}`, 
-    phone: "Contact seller",
-    image: product.ImageUrl 
-        ? product.ImageUrl 
-        : "/placeholder.svg?height=200&width=300&query=product",
+    condition: product.Condition || "Good",
+    seller: product.SellerName || `Seller ${product.SellerID}`,
+    phone: product.SellerPhone || "Contact seller",
+    image: product.ImageUrl || "/placeholder.jpg",
     description: product.Description,
     stock: Number(product.Stock),
-}))
+}));
+
 
 
 

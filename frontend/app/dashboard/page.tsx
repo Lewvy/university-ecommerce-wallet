@@ -18,6 +18,104 @@ export default function DashboardPage() {
 	const [userData, setUserData] = useState<any>(null)
 	const [isLoading, setIsLoading] = useState(true)
 
+	useEffect(() => {
+		const stored = localStorage.getItem("user")
+		const token = localStorage.getItem("access_token")
+
+		if (!stored || !token) {
+			router.push("/login")
+			return
+		}
+
+		try {
+			const parsed = JSON.parse(stored)
+			setUserData(parsed)
+		} catch {
+			router.push("/login")
+		} finally {
+			setIsLoading(false)
+		}
+	}, [])
+
+	const [currentView, setCurrentView] = useState<CurrentView>("home")
+	const [searchQuery, setSearchQuery] = useState("")
+	const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+	const [cartItems, setCartItems] = useState<any[]>([])
+	const [postedItems, setPostedItems] = useState<any[]>([])
+
+	const handleAddToCart = (item: any) => setCartItems([...cartItems, item])
+	const handlePostItem = (item: any) => setPostedItems([...postedItems, item])
+	const handleLogout = () => {
+		localStorage.clear()
+		router.push("/login")
+	}
+
+	if (isLoading) {
+		return <div className="flex justify-center items-center h-screen">Loading…</div>
+	}
+
+	if (!userData) return null
+
+	return (
+		<div className="flex h-screen">
+			<Sidebar currentView={currentView} onViewChange={setCurrentView} />
+			<div className="flex-1 flex flex-col overflow-hidden">
+
+				{currentView === "home" && (
+					<Header
+						username={userData.username}
+						searchQuery={searchQuery}
+						onSearchChange={setSearchQuery}
+						selectedCategory={selectedCategory}
+						onCategoryChange={setSelectedCategory}
+					/>
+				)}
+
+				<main className="flex-1 overflow-auto p-4">
+
+					{currentView === "home" && (
+						<MarketplaceView
+							searchQuery={searchQuery}
+							selectedCategory={selectedCategory}
+							postedItems={postedItems}
+							onAddToCart={handleAddToCart}
+						/>
+					)}
+
+					{currentView === "sell" && <SellItemForm onSubmit={handlePostItem} userData={userData} />}
+					{currentView === "profile" && <ProfilePage userData={userData} />}
+					{currentView === "categories" && <CategoriesView postedItems={postedItems} onCategorySelect={setSelectedCategory} />}
+					{currentView === "wallet" && <WalletPage userData={userData} />}
+					{currentView === "buy" && <CartPage items={cartItems} />}
+
+				</main>
+
+			</div>
+		</div>
+	)
+}
+
+
+/*"use client"
+
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import Header from "../../components/header"
+import Sidebar from "../../components/sidebar"
+import MarketplaceView from "../../components/marketplace-view"
+import SellItemForm from "../../components/sell-item-form"
+import ProfilePage from "../../components/profile-page"
+import CartPage from "../../components/cart-page"
+import CategoriesView from "../../components/categories-view"
+import WalletPage from "../../components/wallet-page"
+
+type CurrentView = "home" | "buy" | "sell" | "profile" | "categories" | "wallet" | "logout"
+
+export default function DashboardPage() {
+	const router = useRouter()
+	const [userData, setUserData] = useState<any>(null)
+	const [isLoading, setIsLoading] = useState(true)
+
 	// Check authentication on mount
 	useEffect(() => {
 		console.log("Dashboard: Checking authentication...")
@@ -126,4 +224,4 @@ export default function DashboardPage() {
 			</div>
 		</div>
 	)
-}
+}*/

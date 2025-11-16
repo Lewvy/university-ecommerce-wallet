@@ -1,5 +1,5 @@
 
-TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJzY29wZSI6ImF1dGhlbnRpY2F0aW9uIiwiZXhwIjoxNzYzMjA5OTY0LCJpYXQiOjE3NjMyMDkwNjR9.bztKhJM053ml7PqJOxrO8awG_plbOcE_gZqjxDkG0co"
+TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJzY29wZSI6ImF1dGhlbnRpY2F0aW9uIiwiZXhwIjoxNzYzMzA3NzgwLCJpYXQiOjE3NjMzMDY4ODB9.SMhxKE9Cm2Keyi_XwYtwb8fuXRUl-_zlr9c6X7aOU_0"
 
 curl -X POST "http://localhost:8088/products" \
 -H "Authorization: Bearer $TOKEN" \

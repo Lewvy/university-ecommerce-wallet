@@ -114,13 +114,11 @@ export default function WalletPage({ userData }: WalletPageProps) {
 			return
 		}
 
-		// Convert to paise for backend
 		const amountInPaise = Math.round(amountInRupees * 100)
 
 		setPaymentLoading(true)
 
 		try {
-			// Check if Razorpay script is loaded
 			if (!window.Razorpay) {
 				const loaded = await loadRazorpayScript()
 				if (!loaded) {
@@ -130,10 +128,8 @@ export default function WalletPage({ userData }: WalletPageProps) {
 				}
 			}
 
-			// Get token from localStorage
 			const token = localStorage.getItem("access_token")
 
-			// Debug: Log token presence
 			console.log("Token found:", token ? "Yes" : "No")
 			console.log("Token length:", token?.length || 0)
 
@@ -143,7 +139,6 @@ export default function WalletPage({ userData }: WalletPageProps) {
 				return
 			}
 
-			// Create order on backend
 			const response = await fetch("http://localhost:8088/wallet/create-topup-order", {
 				method: "POST",
 				headers: {
@@ -161,7 +156,6 @@ export default function WalletPage({ userData }: WalletPageProps) {
 
 			const orderData = await response.json()
 
-			// Configure Razorpay options
 			const options = {
 				key: orderData.key_id,
 				amount: orderData.amount,
@@ -170,13 +164,11 @@ export default function WalletPage({ userData }: WalletPageProps) {
 				description: "Wallet Top-up",
 				order_id: orderData.order_id,
 				handler: async function(response: any) {
-					// Payment successful
 					console.log("Payment successful:", response)
 					alert("Payment successful! Your wallet will be credited shortly.")
 					setAddAmount("")
 					setShowAddMoney(false)
 
-					// Refresh balance after 2 seconds to allow webhook processing
 					setTimeout(() => {
 						fetchWalletData()
 					}, 2000)
@@ -197,7 +189,6 @@ export default function WalletPage({ userData }: WalletPageProps) {
 				}
 			}
 
-			// Open Razorpay checkout
 			const razorpay = new window.Razorpay(options)
 
 			razorpay.on('payment.failed', function(response: any) {
@@ -230,7 +221,6 @@ export default function WalletPage({ userData }: WalletPageProps) {
 		}
 
 		try {
-			// Get token - check both possible storage locations
 			let token = sessionStorage.getItem("access_token")
 			if (!token) {
 				token = localStorage.getItem("access_token")
@@ -271,7 +261,6 @@ export default function WalletPage({ userData }: WalletPageProps) {
 		}
 	}
 
-	// Quick amount buttons (in rupees)
 	const quickAmounts = [5, 10, 20, 50, 100, 500]
 
 	if (isLoading) {

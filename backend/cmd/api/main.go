@@ -62,7 +62,7 @@ func main() {
 	productStore := data.NewProductStore(sqlcQueries)
 
 	tokenService := service.NewTokenService(tokenStore, logger)
-	walletPaymentService := service.NewWalletPaymentService(walletStore, logger)
+	walletPaymentService := service.NewWalletPaymentService(dbPool, walletStore, logger)
 	cloudService, err := service.NewCloudinaryService(&cfg, logger)
 	if err != nil {
 		logger.Error("Cloudinary init error", "error", err)

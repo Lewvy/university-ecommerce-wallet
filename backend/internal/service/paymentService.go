@@ -18,6 +18,7 @@ import (
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type WalletPaymentService struct {
@@ -27,9 +28,10 @@ type WalletPaymentService struct {
 	RazorSecret   string
 	WebhookSecret string
 	Client        *http.Client
+	Pool          *pgxpool.Pool
 }
 
-func NewWalletPaymentService(store data.WalletStore, logger *slog.Logger) *WalletPaymentService {
+func NewWalletPaymentService(pool *pgxpool.Pool, store data.WalletStore, logger *slog.Logger) *WalletPaymentService {
 	return &WalletPaymentService{
 		Store:         store,
 		Logger:        logger,
@@ -37,6 +39,7 @@ func NewWalletPaymentService(store data.WalletStore, logger *slog.Logger) *Walle
 		RazorSecret:   os.Getenv("RAZORPAY_SECRET"),
 		WebhookSecret: os.Getenv("RAZORPAY_WEBHOOK_SECRET"),
 		Client:        &http.Client{Timeout: 10 * time.Second},
+		Pool:          pool,
 	}
 }
 
@@ -173,25 +176,49 @@ func (s *WalletPaymentService) HandleWebhook(ctx context.Context, payload []byte
 		return nil
 	}
 
-	txRow, err := s.Store.GetTransactionByOrderID(ctx, p.OrderID)
+	tx, err := s.Pool.Begin(ctx) // Use the injected pool
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback(ctx)
 
-	_, err = s.Store.UpdateTransactionStatus(ctx, db.UpdateTransactionStatusParams{
+	txStore := s.Store.WithTx(tx)
+
+	txRow, err := txStore.GetTransactionByOrderID(ctx, p.OrderID)
+	if err != nil {
+		s.Logger.Error("Failed to find transaction by order_id", "order_id", p.OrderID, "error", err)
+		return err
+	}
+
+	if txRow.TransactionStatus == "success" {
+		s.Logger.Warn("Webhook received for already processed order", "order_id", p.OrderID)
+		return tx.Commit(ctx)
+	}
+
+	_, err = txStore.UpdateTransactionStatus(ctx, db.UpdateTransactionStatusParams{
 		ID:                txRow.ID,
 		TransactionStatus: "success",
 		RazorpayPaymentID: data.NewPGText(p.ID),
 	})
 	if err != nil {
+		s.Logger.Error("Failed to update transaction status", "order_id", p.OrderID, "error", err) // 👈 ADD LOGGING
 		return err
 	}
 
-	err = s.Store.CreditWalletBalance(ctx, txRow.UserID, txRow.Amount)
+	_, err = txStore.CreditWallet(ctx, db.CreditWalletParams{
+		UserID:  txRow.UserID,
+		Balance: txRow.Amount,
+	})
+
 	if err != nil {
+		s.Logger.Error("❌ Failed to credit wallet balance in webhook", "error", err, "user_id", txRow.UserID, "amount", txRow.Amount) // 👈 ADD LOGGING
 		return err
 	}
 
-	s.Logger.Info("Wallet topup successful", "order_id", p.OrderID)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	s.Logger.Info("✅ Wallet topup successful and committed", "order_id", p.OrderID)
 	return nil
 }

@@ -28,7 +28,6 @@ func ProductRoutes(
 		Pool: dbConn,
 	}
 
-	rh.App.Get("/products", h.GetAllProductsHandler)
 	protected.Get("/products/mine", h.GetMyProductsHandler)
 	rh.App.Get("/products/:id", h.GetProductByIDHandler)
 	protected.Post("/products", h.CreateProductHandler)

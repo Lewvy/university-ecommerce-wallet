@@ -40,11 +40,13 @@ func SetupServer(
 	authMiddleware := middleware.AuthMiddleware()
 
 	userHandler := &handlers.UserHandler{Svc: userService}
+	ph := &handlers.ProductHandler{Svc: productService}
 
 	rh.App.Post("/register", userHandler.RegisterUserHandler)
 	rh.App.Post("/login", userHandler.LoginUserHandler)
 	app.Post("/verify", userHandler.Verify)
 	app.Get("/verify", userHandler.GetVerificationCode)
+	rh.App.Get("/products", ph.GetAllProductsHandler)
 
 	handlers.TokenRoutes(rh, tokenService)
 

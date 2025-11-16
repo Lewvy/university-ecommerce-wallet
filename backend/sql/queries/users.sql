@@ -7,7 +7,7 @@ INSERT INTO users (
 RETURNING *;
 
 -- name: GetUserAuthByEmail :one
-SELECT id, name, password_hash 
+SELECT id, name, password_hash, phone_number
 FROM users 
 WHERE email = $1;
 

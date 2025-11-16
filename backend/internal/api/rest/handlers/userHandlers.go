@@ -48,7 +48,7 @@ func (h *UserHandler) LoginUserHandler(c *fiber.Ctx) error {
 		)
 	}
 
-	accessToken, refreshToken, err := h.Svc.Login(ctx, input)
+	u, accessToken, refreshToken, err := h.Svc.Login(ctx, input)
 
 	if err != nil {
 		if errors.Is(err, service.ErrPwdMismatch) {
@@ -71,6 +71,8 @@ func (h *UserHandler) LoginUserHandler(c *fiber.Ctx) error {
 	}
 
 	return c.Status(http.StatusOK).JSON(fiber.Map{
+		"name":          u.Name,
+		"phone":         u.Phone,
 		"access_token":  accessToken,
 		"refresh_token": refreshToken,
 	})

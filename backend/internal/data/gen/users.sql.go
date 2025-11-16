@@ -53,7 +53,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const getUserAuthByEmail = `-- name: GetUserAuthByEmail :one
-SELECT id, name, password_hash 
+SELECT id, name, password_hash, phone_number
 FROM users 
 WHERE email = $1
 `
@@ -62,12 +62,18 @@ type GetUserAuthByEmailRow struct {
 	ID           int32
 	Name         string
 	PasswordHash pgtype.Text
+	PhoneNumber  pgtype.Text
 }
 
 func (q *Queries) GetUserAuthByEmail(ctx context.Context, email string) (GetUserAuthByEmailRow, error) {
 	row := q.db.QueryRow(ctx, getUserAuthByEmail, email)
 	var i GetUserAuthByEmailRow
-	err := row.Scan(&i.ID, &i.Name, &i.PasswordHash)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.PasswordHash,
+		&i.PhoneNumber,
+	)
 	return i, err
 }
 

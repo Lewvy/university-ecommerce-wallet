@@ -146,16 +146,16 @@ func (s UserService) Signup(ctx context.Context, input dto.UserSignup) (*domain.
 	return resUser, nil
 }
 
-func (s *UserService) Login(ctx context.Context, input dto.UserLogin) (accessToken string, refreshToken string, err error) {
+func (s *UserService) Login(ctx context.Context, input dto.UserLogin) (user *domain.User, accessToken string, refreshToken string, err error) {
 	s.Logger.Info("Attempting user login", "email", input.Email)
 
 	userAuth, err := s.Store.GetUserAuthByEmail(ctx, input.Email)
 	if err != nil {
 		if errors.Is(err, data.ErrRecordNotFound) {
-			return "", "", data.ErrRecordNotFound
+			return nil, "", "", data.ErrRecordNotFound
 		}
 		s.Logger.Error("Error retrieving user auth data", "error", err)
-		return "", "", err
+		return nil, "", "", err
 	}
 
 	stored_pwd_hash := userAuth.PasswordHash.String
@@ -166,7 +166,7 @@ func (s *UserService) Login(ctx context.Context, input dto.UserLogin) (accessTok
 		} else {
 			s.Logger.Error("Password comparison failed", "error", err)
 		}
-		return "", "", ErrPwdMismatch
+		return nil, "", "", ErrPwdMismatch
 	}
 
 	userID := int64(userAuth.ID)
@@ -174,11 +174,15 @@ func (s *UserService) Login(ctx context.Context, input dto.UserLogin) (accessTok
 	newAccessToken, newRefreshToken, err := s.TokenService.CreateNewTokens(ctx, userID)
 	if err != nil {
 		s.Logger.Error("Failed to generate and save tokens", "error", err, "user_id", userID)
-		return "", "", errors.New("failed to generate secure tokens")
+		return nil, "", "", errors.New("failed to generate secure tokens")
 	}
 
+	u := &domain.User{
+		Name:  user.Name,
+		Phone: user.Phone,
+	}
 	s.Logger.Info("User logged in successfully", "user_id", userID)
-	return newAccessToken.Plaintext, newRefreshToken.Plaintext, nil
+	return u, newAccessToken.Plaintext, newRefreshToken.Plaintext, nil
 }
 
 func (s UserService) sendToken(ctx context.Context, id int32, email string, name string) {

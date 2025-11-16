@@ -50,6 +50,9 @@ services:
     - GOOSE_DBSTRING=postgres://${DB_USER}:${DB_PASS}@db:5432/${DB_NAME}?sslmode=disable
     - CACHE_DSN=valkey://valkey:6379/0
     - ES_DSN=http://elasticsearch:9200
+    - RAZORPAY_ID=${RAZORPAY_ID}
+    - RAZORPAY_SECRET=${RAZORPAY_SECRET}
+    - RAZORPAY_WEBHOOK_SECRET=${RAZORPAY_WEBHOOK_SECRET}
     depends_on:
       - db
       - valkey 

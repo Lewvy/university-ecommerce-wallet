@@ -5,7 +5,7 @@ import (
 	"ecommerce/internal/cache"
 	"ecommerce/internal/config"
 	"ecommerce/internal/data"
-	"ecommerce/internal/data/gen"
+	db "ecommerce/internal/data/gen"
 	"ecommerce/internal/logger"
 	"ecommerce/internal/mailer"
 	"ecommerce/internal/service"
@@ -20,20 +20,20 @@ func main() {
 	slog.SetDefault(logger)
 
 	err := godotenv.Load()
-
 	if err != nil {
 		logger.Error("Error loading env", "err", err)
-		return
 	}
 
 	cfg, err := config.NewConfig()
 	if err != nil {
 		logger.Error("Error loading config", "error", err)
+		return
 	}
 
 	mailer, err := mailer.New(cfg.MailerHost, cfg.MailerPort, cfg.MailerUsername, cfg.MailerPassword, cfg.MailerSender)
 	if err != nil {
-		logger.Error("Error creating the mailer service", "error", err)
+		logger.Error("Error creating mailer", "error", err)
+		return
 	}
 
 	cacheClient, err := cache.NewValkeyCache()
@@ -44,7 +44,7 @@ func main() {
 
 	dbPool, err := data.NewDBPool(cfg.DBString)
 	if err != nil {
-		logger.Error("Error connecting to the database", "err", err.Error())
+		logger.Error("Database connection error", "err", err)
 		return
 	}
 	defer dbPool.Close()
@@ -62,18 +62,25 @@ func main() {
 	productStore := data.NewProductStore(sqlcQueries)
 
 	tokenService := service.NewTokenService(tokenStore, logger)
-	userService := service.NewUserService(logger, userStore, walletStore, cacheClient, dbPool, tokenService)
 	walletPaymentService := service.NewWalletPaymentService(walletStore, logger)
 	cloudService, err := service.NewCloudinaryService(&cfg, logger)
-
-	walletService := service.NewWalletService(walletStore, dbPool, walletPaymentService, logger)
-	productService := service.NewProductService(productStore, cloudService, dbPool, logger)
 	if err != nil {
-		logger.Error("Error initializing cloudinaryService", "error", err)
+		logger.Error("Cloudinary init error", "error", err)
 		return
 	}
-	// authService := service.NewAuthService(logger, authStore, tokenService)
 
-	api.SetupServer(&cfg, logger, userService, tokenService, walletService, productService, dbPool)
+	walletService := service.NewWalletService(walletStore, dbPool, walletPaymentService, logger)
+	userService := service.NewUserService(logger, userStore, walletStore, cacheClient, dbPool, tokenService)
+	productService := service.NewProductService(productStore, cloudService, dbPool, logger)
 
+	api.SetupServer(
+		&cfg,
+		logger,
+		userService,
+		tokenService,
+		walletService,
+		walletPaymentService,
+		productService,
+		dbPool,
+	)
 }

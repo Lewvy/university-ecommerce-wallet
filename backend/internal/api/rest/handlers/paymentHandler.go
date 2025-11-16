@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"ecommerce/internal/service"
 
 	"github.com/gofiber/fiber/v2"
@@ -43,11 +42,12 @@ func (h *WalletPaymentHandler) RazorpayWebhook(c *fiber.Ctx) error {
 	sig := c.Get("X-Razorpay-Signature")
 	body := c.Body()
 
+	h.Svc.Logger.Info("RAW BODY", "body", string(body))
 	if !h.Svc.VerifySignature(body, sig) {
 		return c.Status(400).SendString("invalid signature")
 	}
 
-	if err := h.Svc.HandleWebhook(context.Background(), body); err != nil {
+	if err := h.Svc.HandleWebhook(c.Context(), body); err != nil {
 		return c.Status(500).SendString("webhook processing error")
 	}
 

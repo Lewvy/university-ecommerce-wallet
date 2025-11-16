@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"ecommerce/internal/data"
 	"ecommerce/internal/token"
 	"log"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 
 const LocalsUserIDKey = "authenticatedUserID"
 
-func AuthMiddleware() fiber.Handler {
+func AuthMiddleware(store data.UserStore) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 
 		authHeader := c.Get("Authorization")
@@ -39,6 +40,18 @@ func AuthMiddleware() fiber.Handler {
 				"error": "Invalid or expired access token",
 			})
 		}
+
+		// u, err := store.GetUserByID(c.Context(), int(claims.UserID))
+		// if err != nil {
+		// 	return err
+		// }
+
+		// if !u.EmailVerified {
+		// 	err := c.Redirect("/verify", http.StatusUnauthorized)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// }
 
 		c.Locals(LocalsUserIDKey, claims.UserID)
 

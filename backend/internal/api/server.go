@@ -14,14 +14,16 @@ import (
 )
 
 func SetupServer(
-	config *config.Config,
+	cfg *config.Config,
 	logger *slog.Logger,
 	userService *service.UserService,
 	tokenService *service.TokenService,
 	walletService *service.WalletService,
+	walletPaymentService *service.WalletPaymentService,
 	productService *service.ProductService,
 	dbPool *pgxpool.Pool,
 ) {
+
 	app := fiber.New()
 
 	app.Use(cors.New(cors.Config{
@@ -37,26 +39,28 @@ func SetupServer(
 		Logger: logger,
 	}
 
-	authMiddleware := middleware.AuthMiddleware()
-
 	userHandler := &handlers.UserHandler{Svc: userService}
 	ph := &handlers.ProductHandler{Svc: productService}
+	wph := &handlers.WalletPaymentHandler{Svc: walletPaymentService}
 
 	rh.App.Post("/register", userHandler.RegisterUserHandler)
 	rh.App.Post("/login", userHandler.LoginUserHandler)
 	app.Post("/verify", userHandler.Verify)
 	app.Get("/verify", userHandler.GetVerificationCode)
-	rh.App.Get("/products", ph.GetAllProductsHandler)
+	app.Get("/products", ph.GetAllProductsHandler)
 
+	app.Post("/wallet/webhook", wph.RazorpayWebhook)
+
+	authMiddleware := middleware.AuthMiddleware(userService.Store)
 	handlers.TokenRoutes(rh, tokenService)
 
 	protected := app.Group("/", authMiddleware)
 
 	handlers.UserRoutes(rh, userService, protected)
-	handlers.WalletRoutes(rh, walletService, dbPool, protected)
+	handlers.WalletRoutes(rh, walletService, walletPaymentService, dbPool, protected)
 	handlers.ProductRoutes(rh, productService, dbPool, protected)
 
 	rh.Logger.Info("Starting server", "server", "server")
-	err := app.Listen(config.Port)
+	err := app.Listen(cfg.Port)
 	rh.Logger.Error("error running server", "err", err)
 }

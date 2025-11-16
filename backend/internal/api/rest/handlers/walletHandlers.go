@@ -26,7 +26,7 @@ type WalletHandler struct {
 	Pool *pgxpool.Pool
 }
 
-func WalletRoutes(rh *rest.RestHandler, walletService *service.WalletService, dbConn *pgxpool.Pool, protected fiber.Router) {
+func WalletRoutes(rh *rest.RestHandler, walletService *service.WalletService, walletPaymentService *service.WalletPaymentService, dbConn *pgxpool.Pool, protected fiber.Router) {
 	h := WalletHandler{
 		Svc:  walletService,
 		Pool: dbConn,
@@ -36,6 +36,9 @@ func WalletRoutes(rh *rest.RestHandler, walletService *service.WalletService, db
 	protected.Post("/wallet/transfer", h.TransferHandler)
 	protected.Post("/wallet/credit", h.CreditHandler)
 	protected.Post("/wallet/debit", h.DebitHandler)
+
+	walletPaymentHandler := NewWalletPaymentHandler(walletPaymentService)
+	protected.Post("/wallet/create-topup-order", walletPaymentHandler.CreateTopupOrder)
 }
 
 func getCurrentUserID(c *fiber.Ctx) (int32, error) {

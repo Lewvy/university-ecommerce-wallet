@@ -3,12 +3,27 @@ INSERT INTO products (
     seller_id, 
     name, 
     description, 
+	category,
     price, 
     stock, 
     image_url
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2, $3, $4, $5, $6, $7
 ) RETURNING *;
+
+-- name: GetProductsByPriceRange :many
+SELECT * FROM products
+WHERE is_active = TRUE
+  AND price BETWEEN $1 AND $2 
+ORDER BY 
+  CASE WHEN $3 = 'asc' THEN price END ASC,
+  CASE WHEN $3 = 'desc' THEN price END DESC,
+  created_at DESC;
+
+-- name: GetProductsByCategory :many
+SELECT * FROM products
+WHERE category = $1 AND is_active = TRUE
+ORDER BY created_at DESC;
 
 -- name: CreateProductImage :exec
 INSERT INTO product_images (

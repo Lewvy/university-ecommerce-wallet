@@ -18,6 +18,25 @@ services:
     ports:
       - "6400:6379"
 
+  typesense:
+    image: typesense/typesense:0.25.1
+    container_name: typesense
+    ports:
+      - "8108:8108"
+    volumes:
+      - typesense_data:/data
+    environment:
+      TYPESENSE_API_KEY: "supersecurekey"
+      TYPESENSE_DATA_DIR: "/data"
+      TYPESENSE_SERVER_PORT: "8108"
+      TYPESENSE_LOG_LEVEL: "info"
+    command: >
+      --data-dir /data
+      --api-key supersecurekey
+      --enable-cors
+      --listen-port 8108
+    restart: unless-stopped
+
   api:
     build: 
       context: .
@@ -30,12 +49,15 @@ services:
     environment:
     - GOOSE_DBSTRING=postgres://${DB_USER}:${DB_PASS}@db:5432/${DB_NAME}?sslmode=disable
     - CACHE_DSN=valkey://valkey:6379/0
+    - ES_DSN=http://elasticsearch:9200
     depends_on:
       - db
       - valkey 
+      - typesense
     volumes:
       - .:/app
 
 volumes:
   wallet_data:
+  typesense_data:
 

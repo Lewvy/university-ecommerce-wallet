@@ -4,10 +4,11 @@
 CREATE TABLE IF NOT EXISTS products (
     id BIGSERIAL PRIMARY KEY,
     seller_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
+    name TEXT NOT NULL,
     description TEXT,
     price INT NOT NULL,
     stock INT NOT NULL DEFAULT 0,
+	category TEXT NOT NULL DEFAULT 'general',
     image_url TEXT,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP(0) WITH TIME ZONE NOT NULL DEFAULT NOW(),

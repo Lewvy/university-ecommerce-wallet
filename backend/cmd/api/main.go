@@ -11,7 +11,6 @@ import (
 	"ecommerce/internal/service"
 	"ecommerce/internal/worker"
 	"log/slog"
-	"os"
 
 	"github.com/joho/godotenv"
 )
@@ -64,16 +63,10 @@ func main() {
 
 	tokenService := service.NewTokenService(tokenStore, logger)
 	userService := service.NewUserService(logger, userStore, walletStore, cacheClient, dbPool, tokenService)
+	paymentService := service.NewWalletPaymentService(dbPool, logger)
 	cloudService, err := service.NewCloudinaryService(&cfg, logger)
 
-	rzrpay_id := os.Getenv("RAZORPAY_ID")
-	rzrpay_secret := os.Getenv("RAZORPAY_SECRET")
-
-	if rzrpay_id == "" || rzrpay_secret == "" {
-		logger.Error("Error initializing razorpay creds")
-	}
-
-	walletService := service.NewWalletService(walletStore, dbPool, logger, rzrpay_id, rzrpay_secret)
+	walletService := service.NewWalletService(walletStore, dbPool, paymentService, logger)
 	productService := service.NewProductService(productStore, cloudService, dbPool, logger)
 	if err != nil {
 		logger.Error("Error initializing cloudinaryService", "error", err)

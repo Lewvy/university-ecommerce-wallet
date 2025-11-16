@@ -63,6 +63,34 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 	return i, err
 }
 
+const creditWalletBalance = `-- name: CreditWalletBalance :exec
+UPDATE wallets
+SET balance = balance + $2
+WHERE user_id = $1
+`
+
+type CreditWalletBalanceParams struct {
+	UserID  int32
+	Balance int64
+}
+
+func (q *Queries) CreditWalletBalance(ctx context.Context, arg CreditWalletBalanceParams) error {
+	_, err := q.db.Exec(ctx, creditWalletBalance, arg.UserID, arg.Balance)
+	return err
+}
+
+const getTransactionAmount = `-- name: GetTransactionAmount :one
+SELECT amount FROM wallet_transactions
+WHERE id = $1
+`
+
+func (q *Queries) GetTransactionAmount(ctx context.Context, id int32) (int64, error) {
+	row := q.db.QueryRow(ctx, getTransactionAmount, id)
+	var amount int64
+	err := row.Scan(&amount)
+	return amount, err
+}
+
 const getTransactionByOrderID = `-- name: GetTransactionByOrderID :one
 SELECT id, user_id, amount, transaction_status, transaction_type, related_user_id, razorpay_order_id, razorpay_payment_id, metadata, created_at, updated_at FROM wallet_transactions
 WHERE razorpay_order_id = $1

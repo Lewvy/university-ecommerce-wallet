@@ -15,6 +15,7 @@ type Product struct {
 	Description pgtype.Text
 	Price       int32
 	Stock       int32
+	Category    string
 	ImageUrl    pgtype.Text
 	IsActive    bool
 	CreatedAt   pgtype.Timestamptz

@@ -37,18 +37,14 @@ type Wallet struct {
 func NewWalletService(
 	store data.WalletStore,
 	pool *pgxpool.Pool,
+	paymentService *WalletPaymentService,
 	logger *slog.Logger,
-	rzpKeyID string,
-	rzpKeySecret string,
 ) *WalletService {
-
-	rzpClient := razorpay.NewClient(rzpKeyID, rzpKeySecret)
 
 	return &WalletService{
 		BaseStore: store,
 		Pool:      pool,
 		Logger:    logger,
-		RzpClient: rzpClient,
 	}
 }
 

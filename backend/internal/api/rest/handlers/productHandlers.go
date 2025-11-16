@@ -79,6 +79,7 @@ func (h *ProductHandler) CreateProductHandler(c *fiber.Ctx) error {
 
 	name := c.FormValue("name")
 	description := c.FormValue("description")
+	category := c.FormValue("category")
 
 	price, err := strconv.Atoi(c.FormValue("price"))
 	if err != nil {
@@ -111,6 +112,7 @@ func (h *ProductHandler) CreateProductHandler(c *fiber.Ctx) error {
 		SellerID:    int64(sellerID),
 		Name:        name,
 		Description: description,
+		Category:    category,
 		Price:       int32(price),
 		Stock:       int32(stock),
 	}

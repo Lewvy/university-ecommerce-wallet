@@ -1,13 +1,16 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"ecommerce/internal/data"
 	db "ecommerce/internal/data/gen"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"mime/multipart"
+	"net/http"
 	"strconv"
 	"sync"
 
@@ -16,6 +19,38 @@ import (
 )
 
 const defaultUploadWorkerCap = 5
+
+type ProductService struct {
+	Store    data.ProductStore
+	Pool     *pgxpool.Pool
+	Logger   *slog.Logger
+	CloudSvc CloudService
+}
+
+type CreateProductParams struct {
+	SellerID     int64
+	Name         string
+	Description  string
+	Price        int32
+	Stock        int32
+	Category     string
+	ThumbnailURL string
+	ImageURLs    []string
+}
+
+type ProductDetails struct {
+	db.Product
+	Images []db.ProductImage `json:"images"`
+}
+
+func NewProductService(store data.ProductStore, cloud CloudService, pool *pgxpool.Pool, logger *slog.Logger) *ProductService {
+	return &ProductService{
+		Store:    store,
+		Pool:     pool,
+		Logger:   logger,
+		CloudSvc: cloud,
+	}
+}
 
 func (s *ProductService) UploadImagesConcurrent(
 	ctx context.Context,
@@ -65,7 +100,11 @@ func (s *ProductService) UploadImagesConcurrent(
 				}
 
 				func() {
-					defer f.Close()
+					defer func() {
+						if err := f.Close(); err != nil {
+							s.Logger.Error("Error closing file", "error", err)
+						}
+					}()
 					url, err := s.CloudSvc.UploadImage(ctx, f, j.file.Filename)
 					if err != nil {
 						results <- result{idx: j.idx, err: err}
@@ -122,8 +161,7 @@ func (s *ProductService) UploadImagesConcurrent(
 	return imageURLs, nil
 }
 
-func (s *ProductService) CreateProductWithFiles(
-	ctx context.Context,
+func (s *ProductService) CreateProductWithFiles(ctx context.Context,
 	params CreateProductParams,
 	files []*multipart.FileHeader,
 	maxUploadConcurrency int,
@@ -145,41 +183,48 @@ func (s *ProductService) CreateProductWithFiles(
 	return s.CreateProductWithTransaction(ctx, params)
 }
 
-type ProductService struct {
-	Store    data.ProductStore
-	Pool     *pgxpool.Pool
-	Logger   *slog.Logger
-	CloudSvc CloudService
-}
-
-type CreateProductParams struct {
-	SellerID     int64
-	Name         string
-	Description  string
-	Price        int32
-	Stock        int32
-	ThumbnailURL string
-	ImageURLs    []string
-}
-
-type ProductDetails struct {
-	db.Product
-	Images []db.ProductImage `json:"images"`
-}
-
-func NewProductService(store data.ProductStore, cloud CloudService, pool *pgxpool.Pool, logger *slog.Logger) *ProductService {
-	return &ProductService{
-		Store:    store,
-		Pool:     pool,
-		Logger:   logger,
-		CloudSvc: cloud,
+func (s *ProductService) indexProductInTypesense(ctx context.Context, p db.Product) error {
+	doc := map[string]any{
+		"id":          fmt.Sprintf("%d", p.ID),
+		"seller_id":   p.SellerID,
+		"name":        p.Name,
+		"description": p.Description.String,
+		"price":       p.Price,
+		"stock":       p.Stock,
+		"category":    p.Category,
+		"image_url":   p.ImageUrl.String,
+		"is_active":   p.IsActive,
+		"created_at":  p.CreatedAt.Time.Unix(),
+		"updated_at":  p.UpdatedAt.Time.Unix(),
 	}
+
+	b, _ := json.Marshal(doc)
+
+	req, err := http.NewRequest("POST",
+		"http://localhost:8108/collections/products/documents",
+		bytes.NewReader(b),
+	)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-TYPESENSE-API-KEY", "supersecurekey")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("typesense returned %s", resp.Status)
+	}
+
+	return nil
 }
 
-func (s *ProductService) CreateProductWithTransaction(
-	ctx context.Context,
-	params CreateProductParams,
-) (db.Product, error) {
+func (s *ProductService) CreateProductWithTransaction(ctx context.Context, params CreateProductParams) (db.Product, error) {
 	s.Logger.Info("Starting transaction for product creation", "seller_id", params.SellerID, "name", params.Name)
 
 	tx, err := s.Pool.Begin(ctx)
@@ -207,6 +252,12 @@ func (s *ProductService) CreateProductWithTransaction(
 		return db.Product{}, errors.New("database commit failed")
 	}
 
+	go func() {
+		if err := s.indexProductInTypesense(ctx, newProduct); err != nil {
+			s.Logger.Error("Failed to index product in Typesense", "product_id", newProduct.ID, "error", err)
+		}
+	}()
+
 	s.Logger.Info("Transaction committed successfully", "product_id", newProduct.ID)
 	return newProduct, nil
 }
@@ -224,6 +275,7 @@ func (s *ProductService) createProduct(
 		Description: data.NewPGText(params.Description),
 		Price:       params.Price,
 		Stock:       params.Stock,
+		Category:    params.Category,
 		ImageUrl:    data.NewPGText(params.ThumbnailURL),
 	}
 

@@ -12,6 +12,17 @@ INSERT INTO wallet_transactions (
 )
 RETURNING *;
 
+
+-- name: CreditWalletBalance :exec
+UPDATE wallets
+SET balance = balance + $2
+WHERE user_id = $1;
+
+
+-- name: GetTransactionAmount :one
+SELECT amount FROM wallet_transactions
+WHERE id = $1;
+
 -- name: GetTransactionByOrderID :one
 SELECT * FROM wallet_transactions
 WHERE razorpay_order_id = $1

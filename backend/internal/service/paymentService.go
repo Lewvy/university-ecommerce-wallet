@@ -7,20 +7,19 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"time"
 
+	"ecommerce/internal/data"
+	db "ecommerce/internal/data/gen"
 	"log/slog"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type WalletPaymentService struct {
-	Pool          *pgxpool.Pool
+	Store         data.WalletStore
 	Logger        *slog.Logger
 	RazorKeyID    string
 	RazorSecret   string
@@ -28,36 +27,31 @@ type WalletPaymentService struct {
 	Client        *http.Client
 }
 
-func NewWalletPaymentService(pool *pgxpool.Pool, logger *slog.Logger) *WalletPaymentService {
+func NewWalletPaymentService(store data.WalletStore, logger *slog.Logger) *WalletPaymentService {
 	return &WalletPaymentService{
-		Pool:          pool,
+		Store:         store,
 		Logger:        logger,
-		RazorKeyID:    os.Getenv("RAZORPAY_ID"),
-		RazorSecret:   os.Getenv("RAZORPAY_SECRET"),
+		RazorKeyID:    os.Getenv("RAZORPAY_KEY_ID"),
+		RazorSecret:   os.Getenv("RAZORPAY_KEY_SECRET"),
 		WebhookSecret: os.Getenv("RAZORPAY_WEBHOOK_SECRET"),
-		Client: &http.Client{
-			Timeout: 10 * time.Second,
-		},
+		Client:        &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
-// Create Topup transaction + create Razorpay order
 func (s *WalletPaymentService) CreateTopupOrder(ctx context.Context, userID int64, amount int64) (string, error) {
-	// Insert db row
-	var txnID int64
-	err := s.Pool.QueryRow(ctx, `
-		INSERT INTO wallet_transactions (user_id, amount, transaction_type, transaction_status)
-		VALUES ($1, $2, 'razorpay_topup', 'pending')
-		RETURNING id
-	`, userID, amount).Scan(&txnID)
+	txRow, err := s.Store.CreateTransaction(ctx, db.CreateTransactionParams{
+		UserID:            int32(userID),
+		Amount:            amount,
+		TransactionType:   "razorpay_topup",
+		TransactionStatus: "pending",
+	})
 	if err != nil {
-		s.Logger.Error("Insert txn failed", "error", err)
 		return "", err
 	}
 
-	receipt := fmt.Sprintf("wal_txn_%d", txnID)
+	receipt := fmt.Sprintf("wallet_txn_%d", txRow.ID)
 
-	// Prepare Razorpay order
+	// 2) Create Razorpay order
 	body, _ := json.Marshal(map[string]any{
 		"amount":          amount,
 		"currency":        "INR",
@@ -65,21 +59,24 @@ func (s *WalletPaymentService) CreateTopupOrder(ctx context.Context, userID int6
 		"payment_capture": 1,
 	})
 
-	req, _ := http.NewRequest("POST", "https://api.razorpay.com/v1/orders", bytes.NewReader(body))
+	req, _ := http.NewRequest("POST",
+		"https://api.razorpay.com/v1/orders",
+		bytes.NewReader(body),
+	)
+
 	req.SetBasicAuth(s.RazorKeyID, s.RazorSecret)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		s.Logger.Error("Razorpay request failed", "error", err)
 		return "", err
 	}
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
+
 	if resp.StatusCode >= 300 {
-		s.Logger.Error("Razorpay error", "status", resp.StatusCode, "body", string(respBody))
-		return "", fmt.Errorf("razorpay error %d", resp.StatusCode)
+		return "", fmt.Errorf("razorpay error: %s %s", resp.Status, respBody)
 	}
 
 	var r struct {
@@ -87,20 +84,18 @@ func (s *WalletPaymentService) CreateTopupOrder(ctx context.Context, userID int6
 	}
 	_ = json.Unmarshal(respBody, &r)
 
-	// Save Razorpay order ID
-	_, err = s.Pool.Exec(ctx, `
-		UPDATE wallet_transactions
-		SET razorpay_order_id = $1
-		WHERE id = $2
-	`, r.ID, txnID)
+	// 3) Save Razorpay order ID
+	_, err = s.Store.UpdateTransactionOrderID(ctx, db.UpdateTransactionOrderIDParams{
+		ID:              txRow.ID,
+		RazorpayOrderID: data.NewPGText(r.ID),
+	})
 	if err != nil {
-		s.Logger.Error("Failed to update razorpay_order_id", "error", err)
+		return "", err
 	}
 
 	return r.ID, nil
 }
 
-// Verify webhook signature
 func (s *WalletPaymentService) VerifySignature(body []byte, sig string) bool {
 	secret := s.WebhookSecret
 	if secret == "" {
@@ -114,9 +109,8 @@ func (s *WalletPaymentService) VerifySignature(body []byte, sig string) bool {
 	return hmac.Equal([]byte(expected), []byte(sig))
 }
 
-// Handle Razorpay webhook
 func (s *WalletPaymentService) HandleWebhook(ctx context.Context, payload []byte) error {
-	var data struct {
+	var ev struct {
 		Event   string `json:"event"`
 		Payload struct {
 			Payment struct {
@@ -129,31 +123,38 @@ func (s *WalletPaymentService) HandleWebhook(ctx context.Context, payload []byte
 		} `json:"payload"`
 	}
 
-	if err := json.Unmarshal(payload, &data); err != nil {
+	if err := json.Unmarshal(payload, &ev); err != nil {
 		return err
 	}
 
-	payment := data.Payload.Payment.Entity
-	if payment.OrderID == "" {
-		return errors.New("missing order_id")
+	p := ev.Payload.Payment.Entity
+
+	if p.Status != "captured" {
+		return nil
 	}
 
-	if payment.Status == "captured" {
-		// Update DB
-		_, err := s.Pool.Exec(ctx, `
-			UPDATE wallet_transactions
-			SET transaction_status = 'success',
-			    razorpay_payment_id = $1
-			WHERE razorpay_order_id = $2
-		`, payment.ID, payment.OrderID)
-		if err != nil {
-			s.Logger.Error("Failed DB update on webhook", "error", err)
-			return err
-		}
-
-		// TODO: credit wallet here
-		s.Logger.Info("Wallet topup successful", "order_id", payment.OrderID)
+	// 1) Find the transaction
+	txRow, err := s.Store.GetTransactionByOrderID(ctx, p.OrderID)
+	if err != nil {
+		return err
 	}
 
+	// 2) Mark success
+	_, err = s.Store.UpdateTransactionStatus(ctx, db.UpdateTransactionStatusParams{
+		ID:                txRow.ID,
+		TransactionStatus: "success",
+		RazorpayPaymentID: data.NewPGText(p.ID),
+	})
+	if err != nil {
+		return err
+	}
+
+	// 3) Credit wallet
+	err = s.Store.CreditWalletBalance(ctx, txRow.UserID, txRow.Amount)
+	if err != nil {
+		return err
+	}
+
+	s.Logger.Info("Wallet topup successful", "order_id", p.OrderID)
 	return nil
 }

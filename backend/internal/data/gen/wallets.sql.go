@@ -108,6 +108,31 @@ func (q *Queries) GetBalanceById(ctx context.Context, userID int32) (Wallet, err
 	return i, err
 }
 
+const getTransactionByID = `-- name: GetTransactionByID :one
+SELECT id, user_id, amount, transaction_status, transaction_type, related_user_id, razorpay_order_id, razorpay_payment_id, metadata, created_at, updated_at
+FROM wallet_transactions
+WHERE id = $1
+`
+
+func (q *Queries) GetTransactionByID(ctx context.Context, id int32) (WalletTransaction, error) {
+	row := q.db.QueryRow(ctx, getTransactionByID, id)
+	var i WalletTransaction
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Amount,
+		&i.TransactionStatus,
+		&i.TransactionType,
+		&i.RelatedUserID,
+		&i.RazorpayOrderID,
+		&i.RazorpayPaymentID,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getWalletByUserID = `-- name: GetWalletByUserID :one
 SELECT user_id, balance, lifetime_spent, lifetime_earned, created_at, updated_at FROM wallets
 WHERE user_id = $1

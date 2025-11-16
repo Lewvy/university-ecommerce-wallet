@@ -6,6 +6,12 @@ INSERT INTO wallets (
 )
 RETURNING *;
 
+
+-- name: GetTransactionByID :one
+SELECT *
+FROM wallet_transactions
+WHERE id = $1;
+
 -- name: GetBalanceById :one
 SELECT *
 FROM wallets

@@ -11,21 +11,22 @@ type WalletPaymentHandler struct {
 	Svc *service.WalletPaymentService
 }
 
-// POST /wallet/create-topup-order
+func NewWalletPaymentHandler(svc *service.WalletPaymentService) *WalletPaymentHandler {
+	return &WalletPaymentHandler{Svc: svc}
+}
+
 func (h *WalletPaymentHandler) CreateTopupOrder(c *fiber.Ctx) error {
 	userID, err := getCurrentUserID(c)
 	if err != nil {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
 
-	var body struct {
-		Amount int64 `json:"amount"`
-	}
-	if err := c.BodyParser(&body); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid payload"})
+	var req struct{ Amount int64 }
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid body"})
 	}
 
-	orderID, err := h.Svc.CreateTopupOrder(c.Context(), int64(userID), body.Amount)
+	orderID, err := h.Svc.CreateTopupOrder(c.Context(), int64(userID), req.Amount)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "failed to create order"})
 	}
@@ -33,26 +34,21 @@ func (h *WalletPaymentHandler) CreateTopupOrder(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"order_id": orderID,
 		"key_id":   h.Svc.RazorKeyID,
-		"amount":   body.Amount,
+		"amount":   req.Amount,
 		"currency": "INR",
 	})
 }
 
-// POST /wallet/webhook
 func (h *WalletPaymentHandler) RazorpayWebhook(c *fiber.Ctx) error {
 	sig := c.Get("X-Razorpay-Signature")
-	if sig == "" {
-		return c.Status(400).SendString("signature missing")
-	}
+	body := c.Body()
 
-	payload := c.Body()
-
-	if !h.Svc.VerifySignature(payload, sig) {
+	if !h.Svc.VerifySignature(body, sig) {
 		return c.Status(400).SendString("invalid signature")
 	}
 
-	if err := h.Svc.HandleWebhook(context.Background(), payload); err != nil {
-		return c.Status(500).SendString("webhook error")
+	if err := h.Svc.HandleWebhook(context.Background(), body); err != nil {
+		return c.Status(500).SendString("webhook processing error")
 	}
 
 	return c.SendString("ok")

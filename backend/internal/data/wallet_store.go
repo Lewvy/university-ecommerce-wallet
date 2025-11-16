@@ -21,6 +21,9 @@ type WalletStore interface {
 	GetTransactionByOrderID(ctx context.Context, rzpOrderID string) (db.WalletTransaction, error)
 	UpdateTransactionOrderID(ctx context.Context, arg db.UpdateTransactionOrderIDParams) (db.WalletTransaction, error)
 	UpdateTransactionStatus(ctx context.Context, arg db.UpdateTransactionStatusParams) (db.WalletTransaction, error)
+	GetTransactionByID(ctx context.Context, id int32) (db.WalletTransaction, error)
+
+	CreditWalletBalance(ctx context.Context, userID int32, amount int64) error
 }
 
 type sqlWalletStore struct {
@@ -36,6 +39,21 @@ func (s *sqlWalletStore) WithTx(tx pgx.Tx) WalletStore {
 	return &sqlWalletStore{
 		q: db.New(tx),
 	}
+}
+
+func (s *sqlWalletStore) CreditWalletBalance(ctx context.Context, userID int32, amount int64) error {
+	return s.q.CreditWalletBalance(ctx, db.CreditWalletBalanceParams{
+		UserID:  userID,
+		Balance: amount,
+	})
+}
+
+func (s *sqlWalletStore) GetTransactionByID(ctx context.Context, id int32) (db.WalletTransaction, error) {
+	tx, err := s.q.GetTransactionByID(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
+		return db.WalletTransaction{}, ErrRecordNotFound
+	}
+	return tx, err
 }
 
 func (s *sqlWalletStore) CreateWallet(ctx context.Context, userID int32) (db.Wallet, error) {

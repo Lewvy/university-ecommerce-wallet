@@ -177,12 +177,10 @@ func (s *UserService) Login(ctx context.Context, input dto.UserLogin) (user *dom
 		return nil, "", "", errors.New("failed to generate secure tokens")
 	}
 
-	u := &domain.User{
-		Name:  user.Name,
-		Phone: user.Phone,
-	}
+	user.Name = userAuth.Name
+	user.Phone = userAuth.PhoneNumber.String
 	s.Logger.Info("User logged in successfully", "user_id", userID)
-	return u, newAccessToken.Plaintext, newRefreshToken.Plaintext, nil
+	return user, newAccessToken.Plaintext, newRefreshToken.Plaintext, nil
 }
 
 func (s UserService) sendToken(ctx context.Context, id int32, email string, name string) {

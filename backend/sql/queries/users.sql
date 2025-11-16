@@ -1,25 +1,22 @@
 -- name: CreateUser :one
 INSERT INTO users (
-  name, email, password_hash
+  name, email, phone_number, password_hash
 ) VALUES (
-  $1, $2, $3
+  $1, $2, $3, $4
 )
 RETURNING *;
 
 -- name: GetUserAuthByEmail :one
--- Gets the user's ID and password hash for login
 SELECT id, name, password_hash 
 FROM users 
 WHERE email = $1;
 
 -- name: GetUserByID :one
--- Gets a user's public profile data
-SELECT id, name, email, upi_id, email_verified, created_at, version
+SELECT id, name, email, upi_id, phone_number, email_verified, created_at, version
 FROM users
 WHERE id = $1;
 
 -- name: GetUserByEmail :one
--- Checks if an email exists and gets user info
 SELECT * FROM users
 WHERE email = $1;
 

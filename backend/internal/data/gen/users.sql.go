@@ -13,9 +13,9 @@ import (
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
-  name, email, password_hash
+  name, email, phone_number, password_hash
 ) VALUES (
-  $1, $2, $3
+  $1, $2, $3, $4
 )
 RETURNING id, name, email, password_hash, google_id, upi_id, phone_number, created_at, updated_at, email_verified, user_type, version
 `
@@ -23,11 +23,17 @@ RETURNING id, name, email, password_hash, google_id, upi_id, phone_number, creat
 type CreateUserParams struct {
 	Name         string
 	Email        string
+	PhoneNumber  pgtype.Text
 	PasswordHash pgtype.Text
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.Name, arg.Email, arg.PasswordHash)
+	row := q.db.QueryRow(ctx, createUser,
+		arg.Name,
+		arg.Email,
+		arg.PhoneNumber,
+		arg.PasswordHash,
+	)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -58,7 +64,6 @@ type GetUserAuthByEmailRow struct {
 	PasswordHash pgtype.Text
 }
 
-// Gets the user's ID and password hash for login
 func (q *Queries) GetUserAuthByEmail(ctx context.Context, email string) (GetUserAuthByEmailRow, error) {
 	row := q.db.QueryRow(ctx, getUserAuthByEmail, email)
 	var i GetUserAuthByEmailRow
@@ -71,7 +76,6 @@ SELECT id, name, email, password_hash, google_id, upi_id, phone_number, created_
 WHERE email = $1
 `
 
-// Checks if an email exists and gets user info
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByEmail, email)
 	var i User
@@ -93,7 +97,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, name, email, upi_id, email_verified, created_at, version
+SELECT id, name, email, upi_id, phone_number, email_verified, created_at, version
 FROM users
 WHERE id = $1
 `
@@ -103,12 +107,12 @@ type GetUserByIDRow struct {
 	Name          string
 	Email         string
 	UpiID         pgtype.Text
+	PhoneNumber   pgtype.Text
 	EmailVerified bool
 	CreatedAt     pgtype.Timestamp
 	Version       int32
 }
 
-// Gets a user's public profile data
 func (q *Queries) GetUserByID(ctx context.Context, id int32) (GetUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, getUserByID, id)
 	var i GetUserByIDRow
@@ -117,6 +121,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id int32) (GetUserByIDRow, er
 		&i.Name,
 		&i.Email,
 		&i.UpiID,
+		&i.PhoneNumber,
 		&i.EmailVerified,
 		&i.CreatedAt,
 		&i.Version,

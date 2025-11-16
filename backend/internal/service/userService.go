@@ -108,6 +108,7 @@ func (s UserService) Signup(ctx context.Context, input dto.UserSignup) (*domain.
 	pgTextPwdHash := data.NewPGText(password_hash)
 	user := db.CreateUserParams{
 		Name:         input.Name,
+		PhoneNumber:  data.NewPGText(input.Phone),
 		Email:        input.Email,
 		PasswordHash: pgTextPwdHash,
 	}
@@ -133,6 +134,7 @@ func (s UserService) Signup(ctx context.Context, input dto.UserSignup) (*domain.
 
 	resUser := &domain.User{
 		ID:    uint64(dbUser.ID),
+		Phone: input.Phone,
 		Email: dbUser.Email,
 		Name:  dbUser.Name,
 	}

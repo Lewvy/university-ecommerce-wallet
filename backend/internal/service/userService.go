@@ -176,6 +176,7 @@ func (s *UserService) Login(ctx context.Context, input dto.UserLogin) (user *dom
 		s.Logger.Error("Failed to generate and save tokens", "error", err, "user_id", userID)
 		return nil, "", "", errors.New("failed to generate secure tokens")
 	}
+	user = &domain.User{}
 
 	user.Name = userAuth.Name
 	user.Phone = userAuth.PhoneNumber.String

@@ -59,7 +59,17 @@ export default function MarketplaceView({
         const data = await response.json()
         console.log("Fetched products:", data)
 
-        const productList = Array.isArray(data) ? data : (data.products || [])
+        if (!data) {
+			    setProducts([])			// if null → empty list
+			    return
+		    }
+
+        if (Array.isArray(data)) {
+			    setProducts(data)
+			    return
+		    }
+
+        const productList = Array.isArray(data.products) ? data.products : []
         setProducts(productList)
     } catch (err: any) {
         console.error("Error fetching products:", err)
@@ -100,7 +110,7 @@ export default function MarketplaceView({
 
 	// Transform backend products to match ProductCard interface
 	// Transform backend products to match ProductCard interface
-const transformedProducts = products.map((product: any) => ({
+const transformedProducts = (products || []).map((product: any) => ({
     id: product.ID,
     name: product.Name,
     category: product.Category || "Others",

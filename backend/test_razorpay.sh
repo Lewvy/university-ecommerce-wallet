@@ -1,22 +1,15 @@
 #!/bin/bash
 set -e
 
-###########################################
-# REQUIRE TOKEN
-###########################################
 if [ -z "$TOKEN" ]; then
-  echo "❌ ERROR: TOKEN environment variable not set"
+  echo "ERROR: TOKEN environment variable not set"
   echo "Usage: TOKEN=your_jwt ./test_razorpay.sh"
   exit 1
 fi
 
-###########################################
-# CONFIG
-###########################################
 BASE_URL="http://localhost:8088"
 AMOUNT=5000
 
-# Load webhook secret from .env file
 if [ -f .env ]; then
   export $(grep -v '^#' .env | grep RAZORPAY_WEBHOOK_SECRET | xargs)
 fi
@@ -29,9 +22,6 @@ fi
 WEBHOOK_SECRET="$RAZORPAY_WEBHOOK_SECRET"
 echo "Using webhook secret: $WEBHOOK_SECRET"
 
-echo ""
-echo "🔵 1. Creating top-up order..."
-echo "-----------------------------------"
 ORDER_RESPONSE=$(curl -s -X POST "$BASE_URL/wallet/create-topup-order" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
@@ -41,32 +31,24 @@ echo "Response: $ORDER_RESPONSE"
 
 ORDER_ID=$(echo "$ORDER_RESPONSE" | jq -r ".order_id")
 if [[ -z "$ORDER_ID" || "$ORDER_ID" == "null" ]]; then
-  echo "❌ Could not extract order_id"
+  echo "could not extract order_id"
   exit 1
 fi
 
-echo "✅ Created order: $ORDER_ID"
+echo "created order: $ORDER_ID"
 
-###########################################
-# GENERATE PAYLOAD AND SIGNATURE
-###########################################
-echo ""
-echo "🔵 2. Generating payload and signature..."
-echo "-----------------------------------"
+echo "generating payload and signature..."
 
-# Create the exact payload (no extra newlines!)
 PAYLOAD="{\"event\":\"payment.captured\",\"payload\":{\"payment\":{\"entity\":{\"id\":\"pay_test_123\",\"order_id\":\"$ORDER_ID\",\"status\":\"captured\"}}}}"
 
 echo "Payload: $PAYLOAD"
 echo ""
 
-# Generate signature using printf (no newline added)
 SIGNATURE=$(printf '%s' "$PAYLOAD" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" -binary | xxd -p -c 256 | tr -d '\n')
 
 echo "Generated signature: $SIGNATURE"
 echo ""
 
-# Debug: Show hex of payload
 echo "Payload hex (for debugging):"
 printf '%s' "$PAYLOAD" | xxd -p | tr -d '\n'
 echo ""

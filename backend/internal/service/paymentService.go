@@ -44,7 +44,7 @@ func NewWalletPaymentService(pool *pgxpool.Pool, store data.WalletStore, logger 
 }
 
 func (s *WalletPaymentService) CreateTopupOrder(ctx context.Context, userID int64, amount int64) (string, error) {
-	s.Logger.Info("Creating Razorpay top-up order", "user_id", userID, "amount", amount)
+	s.Logger.Info("creating razorpay order", "user_id", userID, "amount", amount)
 
 	txRow, err := s.Store.CreateTransaction(ctx, db.CreateTransactionParams{
 		UserID:            int32(userID),
@@ -58,7 +58,7 @@ func (s *WalletPaymentService) CreateTopupOrder(ctx context.Context, userID int6
 	})
 
 	if err != nil {
-		s.Logger.Error("Failed to create local transaction record", "error", err)
+		s.Logger.Error("failed to create transaction record", "error", err)
 		return "", fmt.Errorf("db transaction creation failed: %w", err)
 	}
 
@@ -78,7 +78,7 @@ func (s *WalletPaymentService) CreateTopupOrder(ctx context.Context, userID int6
 		bytes.NewReader(bodyBytes),
 	)
 	if err != nil {
-		s.Logger.Error("Failed to build Razorpay request", "error", err)
+		s.Logger.Error("failed to build Razorpay request", "error", err)
 		return "", err
 	}
 
@@ -87,7 +87,7 @@ func (s *WalletPaymentService) CreateTopupOrder(ctx context.Context, userID int6
 
 	resp, err := s.Client.Do(req)
 	if err != nil {
-		s.Logger.Error("Failed to call Razorpay Orders API", "error", err)
+		s.Logger.Error("failed to call Razorpay Orders API", "error", err)
 		return "", fmt.Errorf("razorpay request failed: %w", err)
 	}
 	defer resp.Body.Close()
@@ -95,7 +95,7 @@ func (s *WalletPaymentService) CreateTopupOrder(ctx context.Context, userID int6
 	respBody, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode >= 300 {
-		s.Logger.Error("Razorpay returned an error", "status", resp.Status, "response", string(respBody))
+		s.Logger.Error("razorpay returned an error", "status", resp.Status, "response", string(respBody))
 		return "", fmt.Errorf("razorpay error %s", resp.Status)
 	}
 
@@ -103,7 +103,7 @@ func (s *WalletPaymentService) CreateTopupOrder(ctx context.Context, userID int6
 		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(respBody, &r); err != nil {
-		s.Logger.Error("Failed to parse Razorpay order response", "error", err, "body", string(respBody))
+		s.Logger.Error("failed to parse Razorpay order response", "error", err, "body", string(respBody))
 		return "", err
 	}
 
@@ -116,11 +116,11 @@ func (s *WalletPaymentService) CreateTopupOrder(ctx context.Context, userID int6
 	})
 
 	if err != nil {
-		s.Logger.Error("Failed to update Razorpay order ID in DB", "error", err)
+		s.Logger.Error("failed to update Razorpay order ID in DB", "error", err)
 		return "", err
 	}
 
-	s.Logger.Info("Razorpay order created successfully",
+	s.Logger.Info("razorpay order created successfully",
 		"user_id", userID,
 		"transaction_id", txRow.ID,
 		"order_id", r.ID)
@@ -129,13 +129,14 @@ func (s *WalletPaymentService) CreateTopupOrder(ctx context.Context, userID int6
 }
 
 func (s *WalletPaymentService) VerifySignature(body []byte, provided string) bool {
-	secret := os.Getenv("RAZORPAY_WEBHOOK_SECRET")
+	secret := s.WebhookSecret
+
 	if secret == "" {
-		s.Logger.Error("Missing webhook secret")
+		s.Logger.Error("webhook secret is empty in service struct")
 		return false
 	}
 
-	s.Logger.Info("Backend received body",
+	s.Logger.Info("backend received body",
 		"length", len(body),
 		"hex", hex.EncodeToString(body),
 	)
@@ -144,7 +145,7 @@ func (s *WalletPaymentService) VerifySignature(body []byte, provided string) boo
 	expectedBytes := mac.Sum(nil)
 	expectedHex := hex.EncodeToString(expectedBytes)
 
-	s.Logger.Info("Signature Check",
+	s.Logger.Info("signature check",
 		"expected", expectedHex,
 		"provided", provided,
 	)
@@ -176,7 +177,7 @@ func (s *WalletPaymentService) HandleWebhook(ctx context.Context, payload []byte
 		return nil
 	}
 
-	tx, err := s.Pool.Begin(ctx) // Use the injected pool
+	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -186,12 +187,12 @@ func (s *WalletPaymentService) HandleWebhook(ctx context.Context, payload []byte
 
 	txRow, err := txStore.GetTransactionByOrderID(ctx, p.OrderID)
 	if err != nil {
-		s.Logger.Error("Failed to find transaction by order_id", "order_id", p.OrderID, "error", err)
+		s.Logger.Error("failed to find transaction by order_id", "order_id", p.OrderID, "error", err)
 		return err
 	}
 
 	if txRow.TransactionStatus == "success" {
-		s.Logger.Warn("Webhook received for already processed order", "order_id", p.OrderID)
+		s.Logger.Warn("webhook received for already processed order", "order_id", p.OrderID)
 		return tx.Commit(ctx)
 	}
 
@@ -201,7 +202,7 @@ func (s *WalletPaymentService) HandleWebhook(ctx context.Context, payload []byte
 		RazorpayPaymentID: data.NewPGText(p.ID),
 	})
 	if err != nil {
-		s.Logger.Error("Failed to update transaction status", "order_id", p.OrderID, "error", err) // 👈 ADD LOGGING
+		s.Logger.Error("failed to update transaction status", "order_id", p.OrderID, "error", err)
 		return err
 	}
 
@@ -211,7 +212,7 @@ func (s *WalletPaymentService) HandleWebhook(ctx context.Context, payload []byte
 	})
 
 	if err != nil {
-		s.Logger.Error("❌ Failed to credit wallet balance in webhook", "error", err, "user_id", txRow.UserID, "amount", txRow.Amount) // 👈 ADD LOGGING
+		s.Logger.Error("failed to credit wallet balance in webhook", "error", err, "user_id", txRow.UserID, "amount", txRow.Amount)
 		return err
 	}
 
@@ -219,6 +220,6 @@ func (s *WalletPaymentService) HandleWebhook(ctx context.Context, payload []byte
 		return err
 	}
 
-	s.Logger.Info("✅ Wallet topup successful and committed", "order_id", p.OrderID)
+	s.Logger.Info("wallet topup successful and committed", "order_id", p.OrderID)
 	return nil
 }

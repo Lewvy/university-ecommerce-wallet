@@ -56,3 +56,7 @@ ORDER BY created_at DESC;
 SELECT * FROM products
 WHERE seller_id = $1
 ORDER BY created_at DESC;
+
+-- name: GetProductsByIDs :many
+SELECT * FROM products
+WHERE id = ANY($1::bigint[]);

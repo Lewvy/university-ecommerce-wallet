@@ -20,6 +20,18 @@ const (
 	Verification = "verification"
 )
 
+func NewValkeyCache() (*ValkeyCache, error) {
+	address, err := valkey.ParseURL(os.Getenv("CACHE_DSN"))
+	if err != nil {
+		return nil, err
+	}
+	client, err := valkey.NewClient(address)
+	if err != nil {
+		return nil, err
+	}
+	return &ValkeyCache{Client: client}, nil
+}
+
 func (v *ValkeyCache) GetTokenHashByUserID(ctx context.Context, userID int64) (string, error) {
 
 	key := fmt.Sprintf("%s:%d:%s", User, userID, Verification)
@@ -109,15 +121,60 @@ func (v *ValkeyCache) DeleteToken(ctx context.Context, tokenHash string) error {
 
 	return nil
 }
+func (v *ValkeyCache) cartKey(userID int64) string {
+	return fmt.Sprintf("cart:%d", userID)
+}
 
-func NewValkeyCache() (*ValkeyCache, error) {
-	address, err := valkey.ParseURL(os.Getenv("CACHE_DSN"))
+func (v *ValkeyCache) AddToCart(ctx context.Context, userID int64, productID int64, quantity int) error {
+	key := v.cartKey(userID)
+	field := strconv.FormatInt(productID, 10)
+
+	cmd := v.Client.B().Hincrby().Key(key).Field(field).Increment(int64(quantity)).Build()
+	return v.Client.Do(ctx, cmd).Error()
+}
+
+func (v *ValkeyCache) GetCart(ctx context.Context, userID int64) (map[string]string, error) {
+	key := v.cartKey(userID)
+	cmd := v.Client.B().Hgetall().Key(key).Build()
+
+	res, err := v.Client.Do(ctx, cmd).AsStrMap()
 	if err != nil {
+		if valkey.IsValkeyNil(err) {
+			return make(map[string]string), nil
+		}
 		return nil, err
 	}
-	client, err := valkey.NewClient(address)
-	if err != nil {
-		return nil, err
+	return res, nil
+}
+
+func (v *ValkeyCache) UpdateCartItemQuantity(ctx context.Context, userID int64, productID int64, quantity int) error {
+	key := v.cartKey(userID)
+	field := strconv.FormatInt(productID, 10)
+
+	if quantity <= 0 {
+		return v.DeleteCartItem(ctx, userID, productID)
 	}
-	return &ValkeyCache{Client: client}, nil
+
+	cmd := v.Client.B().Hset().Key(key).FieldValue().FieldValue(field, strconv.Itoa(quantity)).Build()
+	return v.Client.Do(ctx, cmd).Error()
+}
+
+func (v *ValkeyCache) DeleteCartItem(ctx context.Context, userID int64, productID int64) error {
+	key := v.cartKey(userID)
+	field := strconv.FormatInt(productID, 10)
+
+	cmd := v.Client.B().Hdel().Key(key).Field().Field(field).Build()
+	return v.Client.Do(ctx, cmd).Error()
+}
+
+func (v *ValkeyCache) ClearCart(ctx context.Context, userID int64) error {
+	key := v.cartKey(userID)
+	cmd := v.Client.B().Del().Key(key).Build()
+	return v.Client.Do(ctx, cmd).Error()
+}
+
+func (v *ValkeyCache) GetCartCount(ctx context.Context, userID int64) (int64, error) {
+	key := v.cartKey(userID)
+	cmd := v.Client.B().Hlen().Key(key).Build()
+	return v.Client.Do(ctx, cmd).AsInt64()
 }

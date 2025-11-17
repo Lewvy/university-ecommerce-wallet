@@ -236,6 +236,46 @@ func (q *Queries) GetProductsByCategory(ctx context.Context, category string) ([
 	return items, nil
 }
 
+const getProductsByIDs = `-- name: GetProductsByIDs :many
+SELECT id, seller_id, seller_name, seller_phone, name, description, condition, price, stock, category, image_url, is_active, created_at, updated_at FROM products
+WHERE id = ANY($1::bigint[])
+`
+
+func (q *Queries) GetProductsByIDs(ctx context.Context, dollar_1 []int64) ([]Product, error) {
+	rows, err := q.db.Query(ctx, getProductsByIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Product
+	for rows.Next() {
+		var i Product
+		if err := rows.Scan(
+			&i.ID,
+			&i.SellerID,
+			&i.SellerName,
+			&i.SellerPhone,
+			&i.Name,
+			&i.Description,
+			&i.Condition,
+			&i.Price,
+			&i.Stock,
+			&i.Category,
+			&i.ImageUrl,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getProductsByPriceRange = `-- name: GetProductsByPriceRange :many
 SELECT id, seller_id, seller_name, seller_phone, name, description, condition, price, stock, category, image_url, is_active, created_at, updated_at FROM products
 WHERE is_active = TRUE

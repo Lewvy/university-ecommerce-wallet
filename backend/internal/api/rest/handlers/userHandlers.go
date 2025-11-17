@@ -17,21 +17,16 @@ type UserHandler struct {
 }
 
 func UserRoutes(rh *rest.RestHandler, userService *service.UserService, protected fiber.Router) {
-	app := rh.App
 
 	h := UserHandler{
 		Svc: userService,
 	}
 
-	app.Post("/profile", h.CreateProfile)
-	app.Get("/profile", h.GetProfile)
+	protected.Post("/profile", h.CreateProfile)
+	protected.Get("/profile", h.GetProfile)
+	protected.Post("/order", h.CreateOrder)
+	protected.Get("/order/:id", h.GetOrder)
 
-	app.Post("/cart", h.CreateCart)
-	app.Get("/cart", h.GetCart)
-	app.Post("/order", h.CreateOrder)
-	app.Get("/order/:id", h.GetOrder)
-
-	app.Post("/become-seller", h.BecomeSeller)
 }
 
 func (h *UserHandler) LoginUserHandler(c *fiber.Ctx) error {

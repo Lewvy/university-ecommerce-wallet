@@ -3,23 +3,47 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
+interface ProductImage {
+	ID: number;
+	ImageUrl: string;
+}
+
+interface Product {
+	ID: number;
+	Name: string;
+	Category: string;
+	Price: number;
+	Condition: string;
+	Stock: number;
+	Description: string;
+	ImageUrl: string;
+	SellerName?: string;
+	SellerPhone?: string;
+	SellerID: number;
+	images?: ProductImage[];
+}
+
 export default function ProductDetailsPage() {
 	const { id } = useParams();
-	const [product, setProduct] = useState<any>(null);
+	const [product, setProduct] = useState<Product | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [imageIndex, setImageIndex] = useState(0);
+	const [isAdding, setIsAdding] = useState(false);
+	const [isAdded, setIsAdded] = useState(false);
+	const [addError, setAddError] = useState<string | null>(null);
 
 	useEffect(() => {
-		fetchProduct();
-	}, []);
+		if (id) {
+			fetchProduct();
+		}
+	}, [id]);
 
 	const fetchProduct = async () => {
 		try {
 			const token = localStorage.getItem("access_token");
-
 			const res = await fetch(`http://localhost:8088/products/${id}`, {
 				headers: {
-					"Authorization": token ? `Bearer ${token}` : "",
+					Authorization: token ? `Bearer ${token}` : "",
 					"Content-Type": "application/json",
 				},
 			});
@@ -34,7 +58,6 @@ export default function ProductDetailsPage() {
 			const data = await res.json();
 			console.log("Loaded Product:", data);
 			setProduct(data);
-
 		} catch (err) {
 			console.error("Failed to load product:", err);
 		} finally {
@@ -42,14 +65,67 @@ export default function ProductDetailsPage() {
 		}
 	};
 
+	const handleAddToCart = async () => {
+		if (!product) return;
+
+		setIsAdding(true);
+		setIsAdded(false);
+		setAddError(null);
+
+		try {
+			const token = localStorage.getItem("access_token");
+			if (!token) {
+				throw new Error("Please log in to add items to your cart");
+			}
+
+			const res = await fetch("http://localhost:8088/cart/add", {
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					product_id: product.ID,
+					quantity: 1,
+				}),
+			});
+
+			if (!res.ok) {
+				const errorData = await res.json();
+				throw new Error(errorData.error || "Failed to add to cart");
+			}
+
+			// Success
+			setIsAdded(true);
+			setTimeout(() => {
+				setIsAdded(false);
+			}, 2000);
+		} catch (err: any) {
+			console.error("Add to cart failed:", err);
+			setAddError(err.message);
+			setTimeout(() => {
+				setAddError(null);
+			}, 3000);
+		} finally {
+			setIsAdding(false);
+		}
+	};
+
 	if (loading) return <div className="p-10 text-center">Loading...</div>;
 	if (!product) return <div className="p-10 text-center">Product not found</div>;
 
-	// --- FIX #1 ---
-	// Use lowercase 'product.images' and ensure the fallback has the same object structure.
-	const images = product.images?.length > 0
-		? product.images
-		: [{ ImageUrl: product.ImageUrl, ID: 0 }]; // Fallback for products with only a main image
+	const images =
+		product.images && product.images.length > 0
+			? product.images
+			: [{ ImageUrl: product.ImageUrl, ID: 0 }];
+
+	const buttonStyles = isAdded
+		? "bg-green-600 hover:bg-green-700"
+		: isAdding
+			? "bg-gray-400 cursor-not-allowed"
+			: addError
+				? "bg-red-600 hover:bg-red-700"
+				: "bg-blue-600 hover:bg-blue-700";
 
 	return (
 		<div className="max-w-5xl mx-auto p-6">
@@ -61,22 +137,19 @@ export default function ProductDetailsPage() {
 			</button>
 
 			<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
 				<div>
-					{/* --- FIX #2A --- */}
-					{/* Access the .ImageUrl property */}
 					<img
 						src={images[imageIndex]?.ImageUrl}
 						className="w-full h-96 object-contain border rounded-lg"
+						alt={product.Name}
 					/>
 
 					<div className="flex gap-3 mt-4 overflow-x-auto">
-						{/* --- FIX #2B --- */}
-						{/* Map over objects, use img.ImageUrl, and use a stable key (img.ID) */}
-						{images.map((img: any, idx: number) => (
+						{images.map((img: ProductImage, idx: number) => (
 							<img
 								key={img.ID || idx}
 								src={img.ImageUrl}
+								alt={`Product thumbnail ${idx + 1}`}
 								className={`w-20 h-20 object-cover rounded-lg cursor-pointer border-2 ${idx === imageIndex ? "border-blue-600" : "border-gray-300"
 									}`}
 								onClick={() => setImageIndex(idx)}
@@ -85,7 +158,6 @@ export default function ProductDetailsPage() {
 					</div>
 				</div>
 
-				{/* RIGHT — DETAILS */}
 				<div>
 					<h1 className="text-3xl font-bold mb-2">{product.Name}</h1>
 					<p className="text-gray-600 mb-4">{product.Category}</p>
@@ -107,16 +179,31 @@ export default function ProductDetailsPage() {
 
 					<h2 className="text-xl font-semibold mt-6 mb-2">Seller Details</h2>
 					<div className="bg-gray-100 p-4 rounded-lg">
-						<p><strong>Name:</strong> {product.SellerName || "Unknown Seller"}</p>
-						<p><strong>Phone:</strong> {product.SellerPhone || "N/A"}</p>
-						<p><strong>Seller ID:</strong> {product.SellerID}</p>
+						<p>
+							<strong>Name:</strong> {product.SellerName || "Unknown Seller"}
+						</p>
+						<p>
+							<strong>Phone:</strong> {product.SellerPhone || "N/A"}
+						</p>
+						<p>
+							<strong>Seller ID:</strong> {product.SellerID}
+						</p>
 					</div>
 
-					<button className="mt-6 w-full bg-blue-600 text-white text-lg py-3 rounded-lg hover:bg-blue-700">
-						Add to Cart
+					{addError && (
+						<div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+							{addError}
+						</div>
+					)}
+
+					<button
+						onClick={handleAddToCart}
+						disabled={isAdding || isAdded}
+						className={`mt-6 w-full text-white text-lg py-3 rounded-lg transition-colors duration-200 ${buttonStyles}`}
+					>
+						{isAdded ? "✓ Added!" : isAdding ? "Adding..." : addError ? "Try Again" : "Add to Cart"}
 					</button>
 				</div>
-
 			</div>
 		</div>
 	);

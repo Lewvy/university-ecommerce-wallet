@@ -21,6 +21,8 @@ func SetupServer(
 	walletService *service.WalletService,
 	walletPaymentService *service.WalletPaymentService,
 	productService *service.ProductService,
+	cartService *service.CartService,
+	orderService *service.OrderService,
 	dbPool *pgxpool.Pool,
 ) {
 
@@ -56,9 +58,11 @@ func SetupServer(
 
 	protected := app.Group("/", authMiddleware)
 
+	handlers.OrderRoutes(rh, orderService, logger, protected)
 	handlers.UserRoutes(rh, userService, protected)
 	handlers.WalletRoutes(rh, walletService, walletPaymentService, dbPool, protected)
 	handlers.ProductRoutes(rh, productService, dbPool, userService, protected)
+	handlers.CartRoutes(rh, cartService, logger, protected)
 
 	rh.Logger.Info("Starting server", "server", "server")
 	err := app.Listen(cfg.Port)

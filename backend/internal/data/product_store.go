@@ -16,6 +16,7 @@ func pgErr(err error) (*pgconn.PgError, bool) {
 
 type ProductStore interface {
 	CreateProduct(ctx context.Context, arg db.CreateProductParams) (db.Product, error)
+	GetProductsByIDs(ctx context.Context, ids []int64) ([]db.Product, error)
 	CreateProductImage(ctx context.Context, arg db.CreateProductImageParams) error
 	GetProductByID(ctx context.Context, id int64) (db.Product, error)
 	GetProductImages(ctx context.Context, productID int64) ([]db.ProductImage, error)
@@ -33,6 +34,10 @@ func NewProductStore(queries *db.Queries) ProductStore {
 	return &sqlProductStore{
 		q: queries,
 	}
+}
+
+func (s *sqlProductStore) GetProductsByIDs(ctx context.Context, ids []int64) ([]db.Product, error) {
+	return s.q.GetProductsByIDs(ctx, ids)
 }
 
 func (s *sqlProductStore) GetProductsBySeller(ctx context.Context, sellerID int64) ([]db.Product, error) {

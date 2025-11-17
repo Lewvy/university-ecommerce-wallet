@@ -60,6 +60,7 @@ func main() {
 	tokenStore := data.NewTokenStore(sqlcQueries)
 	walletStore := data.NewWalletStore(sqlcQueries)
 	productStore := data.NewProductStore(sqlcQueries)
+	orderStore := data.NewOrderStore(sqlcQueries)
 
 	tokenService := service.NewTokenService(tokenStore, logger)
 	walletPaymentService := service.NewWalletPaymentService(dbPool, walletStore, logger)
@@ -72,6 +73,8 @@ func main() {
 	walletService := service.NewWalletService(walletStore, dbPool, walletPaymentService, logger)
 	userService := service.NewUserService(logger, userStore, walletStore, cacheClient, dbPool, tokenService)
 	productService := service.NewProductService(productStore, cloudService, dbPool, logger)
+	cartService := service.NewCartService(productStore, cacheClient, logger)
+	orderService := service.NewOrderService(orderStore, productStore, walletService, cartService, dbPool, logger)
 
 	api.SetupServer(
 		&cfg,
@@ -81,6 +84,8 @@ func main() {
 		walletService,
 		walletPaymentService,
 		productService,
+		cartService,
+		orderService,
 		dbPool,
 	)
 }

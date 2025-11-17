@@ -132,7 +132,7 @@ export default function WalletPage({ userData }: WalletPageProps) {
 				setRecipientId("")
 				setShowTransfer(false)
 				alert(data.message || "Transfer successful!")
-				fetchWalletData() // Refresh balance
+				fetchWalletData()
 			} else {
 				const error = await response.json()
 				alert(error.error || "Failed to transfer money")

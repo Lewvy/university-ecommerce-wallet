@@ -14,21 +14,27 @@ import (
 const createProduct = `-- name: CreateProduct :one
 INSERT INTO products (
     seller_id, 
+	seller_name,
+	seller_phone,
     name, 
     description, 
+	condition,
 	category,
     price, 
     stock, 
     image_url
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
-) RETURNING id, seller_id, name, description, price, stock, category, image_url, is_active, created_at, updated_at
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+) RETURNING id, seller_id, seller_name, seller_phone, name, description, condition, price, stock, category, image_url, is_active, created_at, updated_at
 `
 
 type CreateProductParams struct {
 	SellerID    int64
+	SellerName  string
+	SellerPhone string
 	Name        string
 	Description pgtype.Text
+	Condition   string
 	Category    string
 	Price       int32
 	Stock       int32
@@ -38,8 +44,11 @@ type CreateProductParams struct {
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error) {
 	row := q.db.QueryRow(ctx, createProduct,
 		arg.SellerID,
+		arg.SellerName,
+		arg.SellerPhone,
 		arg.Name,
 		arg.Description,
+		arg.Condition,
 		arg.Category,
 		arg.Price,
 		arg.Stock,
@@ -49,8 +58,11 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 	err := row.Scan(
 		&i.ID,
 		&i.SellerID,
+		&i.SellerName,
+		&i.SellerPhone,
 		&i.Name,
 		&i.Description,
+		&i.Condition,
 		&i.Price,
 		&i.Stock,
 		&i.Category,
@@ -84,7 +96,7 @@ func (q *Queries) CreateProductImage(ctx context.Context, arg CreateProductImage
 }
 
 const getAllProducts = `-- name: GetAllProducts :many
-SELECT id, seller_id, name, description, price, stock, category, image_url, is_active, created_at, updated_at FROM products
+SELECT id, seller_id, seller_name, seller_phone, name, description, condition, price, stock, category, image_url, is_active, created_at, updated_at FROM products
 WHERE is_active = TRUE
 ORDER BY created_at DESC
 `
@@ -101,8 +113,11 @@ func (q *Queries) GetAllProducts(ctx context.Context) ([]Product, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.SellerID,
+			&i.SellerName,
+			&i.SellerPhone,
 			&i.Name,
 			&i.Description,
+			&i.Condition,
 			&i.Price,
 			&i.Stock,
 			&i.Category,
@@ -122,7 +137,7 @@ func (q *Queries) GetAllProducts(ctx context.Context) ([]Product, error) {
 }
 
 const getProductByID = `-- name: GetProductByID :one
-SELECT id, seller_id, name, description, price, stock, category, image_url, is_active, created_at, updated_at FROM products
+SELECT id, seller_id, seller_name, seller_phone, name, description, condition, price, stock, category, image_url, is_active, created_at, updated_at FROM products
 WHERE id = $1 AND is_active = TRUE
 `
 
@@ -132,8 +147,11 @@ func (q *Queries) GetProductByID(ctx context.Context, id int64) (Product, error)
 	err := row.Scan(
 		&i.ID,
 		&i.SellerID,
+		&i.SellerName,
+		&i.SellerPhone,
 		&i.Name,
 		&i.Description,
+		&i.Condition,
 		&i.Price,
 		&i.Stock,
 		&i.Category,
@@ -178,7 +196,7 @@ func (q *Queries) GetProductImages(ctx context.Context, productID int64) ([]Prod
 }
 
 const getProductsByCategory = `-- name: GetProductsByCategory :many
-SELECT id, seller_id, name, description, price, stock, category, image_url, is_active, created_at, updated_at FROM products
+SELECT id, seller_id, seller_name, seller_phone, name, description, condition, price, stock, category, image_url, is_active, created_at, updated_at FROM products
 WHERE category = $1 AND is_active = TRUE
 ORDER BY created_at DESC
 `
@@ -195,8 +213,11 @@ func (q *Queries) GetProductsByCategory(ctx context.Context, category string) ([
 		if err := rows.Scan(
 			&i.ID,
 			&i.SellerID,
+			&i.SellerName,
+			&i.SellerPhone,
 			&i.Name,
 			&i.Description,
+			&i.Condition,
 			&i.Price,
 			&i.Stock,
 			&i.Category,
@@ -216,7 +237,7 @@ func (q *Queries) GetProductsByCategory(ctx context.Context, category string) ([
 }
 
 const getProductsByPriceRange = `-- name: GetProductsByPriceRange :many
-SELECT id, seller_id, name, description, price, stock, category, image_url, is_active, created_at, updated_at FROM products
+SELECT id, seller_id, seller_name, seller_phone, name, description, condition, price, stock, category, image_url, is_active, created_at, updated_at FROM products
 WHERE is_active = TRUE
   AND price BETWEEN $1 AND $2 
 ORDER BY 
@@ -243,8 +264,11 @@ func (q *Queries) GetProductsByPriceRange(ctx context.Context, arg GetProductsBy
 		if err := rows.Scan(
 			&i.ID,
 			&i.SellerID,
+			&i.SellerName,
+			&i.SellerPhone,
 			&i.Name,
 			&i.Description,
+			&i.Condition,
 			&i.Price,
 			&i.Stock,
 			&i.Category,
@@ -264,7 +288,7 @@ func (q *Queries) GetProductsByPriceRange(ctx context.Context, arg GetProductsBy
 }
 
 const getProductsBySeller = `-- name: GetProductsBySeller :many
-SELECT id, seller_id, name, description, price, stock, category, image_url, is_active, created_at, updated_at FROM products
+SELECT id, seller_id, seller_name, seller_phone, name, description, condition, price, stock, category, image_url, is_active, created_at, updated_at FROM products
 WHERE seller_id = $1
 ORDER BY created_at DESC
 `
@@ -281,8 +305,11 @@ func (q *Queries) GetProductsBySeller(ctx context.Context, sellerID int64) ([]Pr
 		if err := rows.Scan(
 			&i.ID,
 			&i.SellerID,
+			&i.SellerName,
+			&i.SellerPhone,
 			&i.Name,
 			&i.Description,
+			&i.Condition,
 			&i.Price,
 			&i.Stock,
 			&i.Category,

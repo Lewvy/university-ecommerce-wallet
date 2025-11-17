@@ -184,6 +184,10 @@ func (s *UserService) Login(ctx context.Context, input dto.UserLogin) (user *dom
 	return user, newAccessToken.Plaintext, newRefreshToken.Plaintext, nil
 }
 
+func (s UserService) FindUserByID(ctx context.Context, id int32) (db.GetUserByIDRow, error) {
+	return s.Store.GetUserByID(ctx, int(id))
+}
+
 func (s UserService) sendToken(ctx context.Context, id int32, email string, name string) {
 
 	expiry := time.Minute * 15

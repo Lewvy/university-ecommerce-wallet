@@ -1,10 +1,12 @@
 
-TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJzY29wZSI6ImF1dGhlbnRpY2F0aW9uIiwiZXhwIjoxNzYzMzA3NzgwLCJpYXQiOjE3NjMzMDY4ODB9.SMhxKE9Cm2Keyi_XwYtwb8fuXRUl-_zlr9c6X7aOU_0"
+TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJzY29wZSI6ImF1dGhlbnRpY2F0aW9uIiwiZXhwIjoxNzYzMzcwNTUxLCJpYXQiOjE3NjMzNjk2NTF9.G6zNRNs6a5slzlK9YrfV4GXSjcGkrywTCu3HP6qJTrM"
 
 curl -X POST "http://localhost:8088/products" \
 -H "Authorization: Bearer $TOKEN" \
 -F "name=Stylish Cotton T-Shirt" \
 -F "description=A comfortable and high-quality cotton t-shirt." \
+-F "condition=new" \
+-F "category=apparel" \
 -F "price=2500" \
 -F "stock=100" \
 -F "images=@img1.png" \

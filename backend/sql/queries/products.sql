@@ -1,14 +1,17 @@
 -- name: CreateProduct :one
 INSERT INTO products (
     seller_id, 
+	seller_name,
+	seller_phone,
     name, 
     description, 
+	condition,
 	category,
     price, 
     stock, 
     image_url
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
 ) RETURNING *;
 
 -- name: GetProductsByPriceRange :many

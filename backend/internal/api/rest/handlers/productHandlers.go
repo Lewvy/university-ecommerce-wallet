@@ -13,19 +13,22 @@ import (
 )
 
 type ProductHandler struct {
-	Svc  *service.ProductService
-	Pool *pgxpool.Pool
+	Svc         *service.ProductService
+	UserService *service.UserService
+	Pool        *pgxpool.Pool
 }
 
 func ProductRoutes(
 	rh *rest.RestHandler,
 	productSvc *service.ProductService,
 	dbConn *pgxpool.Pool,
+	userService *service.UserService,
 	protected fiber.Router,
 ) {
 	h := ProductHandler{
-		Svc:  productSvc,
-		Pool: dbConn,
+		Svc:         productSvc,
+		UserService: userService,
+		Pool:        dbConn,
 	}
 
 	protected.Get("/products/mine", h.GetMyProductsHandler)
@@ -76,9 +79,16 @@ func (h *ProductHandler) CreateProductHandler(c *fiber.Ctx) error {
 		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
 	}
 
+	sellerInfo, err := h.UserService.Store.GetUserByID(ctx, int(sellerID))
+	if err != nil {
+		h.Svc.Logger.Warn("Error fetching user data", "error", err)
+		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "internal server error"})
+	}
+
 	name := c.FormValue("name")
 	description := c.FormValue("description")
 	category := c.FormValue("category")
+	condition := c.FormValue("condition")
 
 	price, err := strconv.Atoi(c.FormValue("price"))
 	if err != nil {
@@ -109,6 +119,9 @@ func (h *ProductHandler) CreateProductHandler(c *fiber.Ctx) error {
 
 	productParams := service.CreateProductParams{
 		SellerID:    int64(sellerID),
+		SellerName:  sellerInfo.Name,
+		SellerPhone: sellerInfo.PhoneNumber.String,
+		Condition:   condition,
 		Name:        name,
 		Description: description,
 		Category:    category,

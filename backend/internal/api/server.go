@@ -58,7 +58,7 @@ func SetupServer(
 
 	handlers.UserRoutes(rh, userService, protected)
 	handlers.WalletRoutes(rh, walletService, walletPaymentService, dbPool, protected)
-	handlers.ProductRoutes(rh, productService, dbPool, protected)
+	handlers.ProductRoutes(rh, productService, dbPool, userService, protected)
 
 	rh.Logger.Info("Starting server", "server", "server")
 	err := app.Listen(cfg.Port)

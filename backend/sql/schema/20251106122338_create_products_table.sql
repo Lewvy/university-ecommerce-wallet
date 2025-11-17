@@ -4,8 +4,12 @@
 CREATE TABLE IF NOT EXISTS products (
     id BIGSERIAL PRIMARY KEY,
     seller_id BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+	seller_name TEXT NOT NULL,
+	seller_phone text not null,
+
     name TEXT NOT NULL,
     description TEXT,
+	condition TEXT NOT NULL,
     price INT NOT NULL,
     stock INT NOT NULL DEFAULT 0,
 	category TEXT NOT NULL DEFAULT 'general',

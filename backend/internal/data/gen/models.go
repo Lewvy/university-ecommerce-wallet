@@ -11,8 +11,11 @@ import (
 type Product struct {
 	ID          int64
 	SellerID    int64
+	SellerName  string
+	SellerPhone string
 	Name        string
 	Description pgtype.Text
+	Condition   string
 	Price       int32
 	Stock       int32
 	Category    string

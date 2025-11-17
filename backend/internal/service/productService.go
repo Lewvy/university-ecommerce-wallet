@@ -29,8 +29,11 @@ type ProductService struct {
 
 type CreateProductParams struct {
 	SellerID     int64
+	SellerName   string
+	SellerPhone  string
 	Name         string
 	Description  string
+	Condition    string
 	Price        int32
 	Stock        int32
 	Category     string
@@ -271,8 +274,11 @@ func (s *ProductService) createProduct(
 
 	productParams := db.CreateProductParams{
 		SellerID:    params.SellerID,
+		SellerName:  params.SellerName,
+		SellerPhone: params.SellerPhone,
 		Name:        params.Name,
 		Description: data.NewPGText(params.Description),
+		Condition:   params.Condition,
 		Price:       params.Price,
 		Stock:       params.Stock,
 		Category:    params.Category,
@@ -352,7 +358,7 @@ func (s *ProductService) GetProductDetails(ctx context.Context, productID int64)
 		if errors.Is(err, data.ErrRecordNotFound) {
 			s.Logger.Warn("Product not found", "product_id", productID)
 		} else {
-			s.Logger.Error("Failed to get product by ID", "product_id", productID, "error", err)
+			s.Logger.Error("Failed to get product", "product_id", productID, "error", err)
 		}
 		return details, err
 	}

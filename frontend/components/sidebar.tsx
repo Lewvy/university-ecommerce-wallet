@@ -13,9 +13,8 @@ const menuItems = [
 	{ id: "profile", label: "My Profile", icon: "👤" },
 	{ id: "categories", label: "Categories", icon: "📂" },
 	{ id: "buy", label: "My Cart", icon: "🛒" },
-	{ id: "wallet", label: "My Wallet", icon: "💳" }, // ← ADDED THIS LINE
-]
-
+	{ id: "wallet", label: "My Wallet", icon: "💳" }, ]
+  
 export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
 	const [isOpen, setIsOpen] = useState(false)
 

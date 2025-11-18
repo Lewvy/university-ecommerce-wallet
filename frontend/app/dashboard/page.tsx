@@ -18,7 +18,6 @@ export default function DashboardPage() {
 	const [userData, setUserData] = useState<any>(null)
 	const [isLoading, setIsLoading] = useState(true)
 
-	// Check authentication on mount
 	useEffect(() => {
 		console.log("Dashboard: Checking authentication...")
 		
@@ -46,12 +45,10 @@ export default function DashboardPage() {
 		}
 	}, [router])
 
-	// Dashboard state
 	
-	//const [currentView, setCurrentView] = useState<CurrentView>("home")
 	const [currentView, setCurrentView] = useState<CurrentView>("home");
 
-// Load saved view safely on client
+
 useEffect(() => {
 	if (typeof window !== "undefined") {
 		const savedView = localStorage.getItem("current_view") as CurrentView;
@@ -61,16 +58,12 @@ useEffect(() => {
 	}
 }, []);
 
-// Save view when changed
 useEffect(() => {
 	if (typeof window !== "undefined") {
 		localStorage.setItem("current_view", currentView);
 	}
 }, [currentView]);
 
-
-
-//changed snippet------------
 
 	const [searchQuery, setSearchQuery] = useState("")
 	const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
@@ -90,14 +83,12 @@ useEffect(() => {
 		router.push("/login")
 	}
 
-	// Handle logout view
 	useEffect(() => {
 		if (currentView === "logout") {
 			handleLogout()
 		}
 	}, [currentView])
 
-	// Show loading spinner while checking auth
 	if (isLoading) {
 		return (
 			<div className="h-screen flex items-center justify-center bg-gray-50">
@@ -109,7 +100,6 @@ useEffect(() => {
 		)
 	}
 
-	// If no user data after loading, don't render
 	if (!userData) {
 		return null
 	}

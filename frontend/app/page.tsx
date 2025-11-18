@@ -7,7 +7,6 @@ export default function Page() {
 	const router = useRouter()
 
 	useEffect(() => {
-		// Check if user is already logged in
 		const user = localStorage.getItem('user')
 		const token = localStorage.getItem('access_token')
 

@@ -1,10 +1,7 @@
 "use client"
 
 import { useState } from "react"
-// We remove useRouter because the parent (app/page.tsx) handles state switching
-// import { useRouter } from 'next/navigation'
 
-// Define the props this component now accepts from its parent (app/page.tsx)
 interface LoginPageProps {
 	onLoginSuccess: (user: any) => void;
 	onSwitchToSignup: () => void;
@@ -18,7 +15,6 @@ export default function LoginPage({ onLoginSuccess, onSwitchToSignup }: LoginPag
 	const [isLoading, setIsLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 
-	// const router = useRouter() // No longer needed
 
 	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const { name, value } = e.target
@@ -45,7 +41,6 @@ export default function LoginPage({ onLoginSuccess, onSwitchToSignup }: LoginPag
 			if (response.ok) {
 				console.log("Login successful:", data)
 
-				// Store authentication tokens
 				if (data.access_token) {
 					sessionStorage.setItem('access_token', data.access_token)
 					console.log("Access token stored")
@@ -55,15 +50,12 @@ export default function LoginPage({ onLoginSuccess, onSwitchToSignup }: LoginPag
 					console.log("Refresh token stored")
 				}
 
-				// Store user info if provided
-				const user = data.user || { email: formData.email }; // Create a fallback user object
+				const user = data.user || { email: formData.email }; 
 				if (data.user) {
 					sessionStorage.setItem('user', JSON.stringify(data.user))
 				}
 
-				// --- FIX ---
-				// Instead of router.push, we call the onLoginSuccess prop
-				// to tell app/page.tsx that we are authenticated.
+				
 				onLoginSuccess(user);
 
 			} else {
@@ -78,7 +70,6 @@ export default function LoginPage({ onLoginSuccess, onSwitchToSignup }: LoginPag
 		}
 	}
 
-	// The rest of your JSX remains the same, but we update the "Sign Up" link
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
 			<div className="w-full max-w-md">
@@ -137,10 +128,7 @@ export default function LoginPage({ onLoginSuccess, onSwitchToSignup }: LoginPag
 
 					<p className="text-center text-gray-600 mt-4">
 						Don't have an account?{" "}
-						{/* --- FIX --- 
-                           Instead of an <a href>, we use a button that calls the prop
-                           to tell app/page.tsx to switch the state to "signup".
-                        */}
+						{}
 						<button
 							onClick={onSwitchToSignup}
 							className="text-blue-600 font-semibold cursor-pointer hover:underline"

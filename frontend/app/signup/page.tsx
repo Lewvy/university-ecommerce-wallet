@@ -37,13 +37,11 @@ export default function SignupPage() {
 			console.log("Registration response:", response.status, responseData)
 
 			if (response.ok) {
-				// Save user info
 				setUserEmail(data.email)
 				setUserName(data.name)
 				setUserPhone(data.phone)
 				setPassword(data.password)
 
-				// Save userId if backend returns it
 				if (responseData.id) {
 					setUserId(responseData.id)
 				} else if (responseData.user && responseData.user.id) {
@@ -52,7 +50,7 @@ export default function SignupPage() {
 					console.warn("⚠️ Backend returned no userId")
 				}
 
-				setStep("verification") // Move to OTP screen
+				setStep("verification") 
 			} else {
 				alert(responseData.message || "Registration failed. Try again.")
 			}
@@ -62,13 +60,10 @@ export default function SignupPage() {
 		}
 	}
 
-	// ------------------------------
-	// AFTER SUCCESSFUL VERIFICATION
-	// ------------------------------
+
 	const handleVerificationComplete = async () => {
 		console.log("Verification complete, preparing to redirect...")
 		
-		// Store user data in sessionStorage before redirecting
 		const userInfo = {
 			username: userName,
 			email: userEmail,
@@ -79,10 +74,8 @@ export default function SignupPage() {
 		console.log("Storing user info:", userInfo)
 		localStorage.setItem('user', JSON.stringify(userInfo))
 		
-		// Show success screen briefly
 		setStep("success")
 
-		// Wait a bit then redirect
 		await new Promise(resolve => setTimeout(resolve, 1500))
 		
 		console.log("Redirecting to dashboard...")
@@ -105,7 +98,6 @@ export default function SignupPage() {
 		)
 	}
 
-	// SUCCESS PAGE
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
 			<div className="text-center">

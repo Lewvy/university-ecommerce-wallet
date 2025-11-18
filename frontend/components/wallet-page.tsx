@@ -20,7 +20,7 @@ interface WalletPageProps {
 	}
 }
 
-// Declare Razorpay on window
+
 declare global {
 	interface Window {
 		Razorpay: any
@@ -44,7 +44,7 @@ export default function WalletPage({ userData }: WalletPageProps) {
 
 	const loadRazorpayScript = () => {
 		return new Promise((resolve) => {
-			// Check if script already loaded
+			
 			if (window.Razorpay) {
 				resolve(true)
 				return
@@ -294,7 +294,7 @@ export default function WalletPage({ userData }: WalletPageProps) {
 		<div className="max-w-4xl mx-auto">
 			<h1 className="text-3xl font-bold text-gray-900 mb-6">My Wallet</h1>
 
-			{/* Balance Card */}
+			{}
 			<div className="bg-gradient-to-br from-blue-600 to-blue-500 rounded-xl p-8 mb-6 shadow-lg">
 				<div className="flex items-center justify-between text-white">
 					<div>
@@ -333,12 +333,12 @@ export default function WalletPage({ userData }: WalletPageProps) {
 				</div>
 			</div>
 
-			{/* Add Money Form - Razorpay */}
+			{}
 			{showAddMoney && (
 				<div className="bg-white rounded-lg shadow-md p-6 mb-6">
 					<h3 className="text-xl font-semibold text-gray-900 mb-4">Add Money to Wallet</h3>
 
-					{/* Quick Amount Selection */}
+					{}
 					<div className="mb-4">
 						<p className="text-sm text-gray-600 mb-2">Quick Select:</p>
 						<div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -357,7 +357,7 @@ export default function WalletPage({ userData }: WalletPageProps) {
 						</div>
 					</div>
 
-					{/* Custom Amount Input */}
+					{}
 					<div className="mb-4">
 						<p className="text-sm text-gray-600 mb-2">Or enter custom amount:</p>
 						<div className="relative">
@@ -375,7 +375,7 @@ export default function WalletPage({ userData }: WalletPageProps) {
 						<p className="text-xs text-gray-500 mt-1">Min: ₹1 | Max: ₹1,00,000</p>
 					</div>
 
-					{/* Action Buttons */}
+					{}
 					<div className="flex gap-4">
 						<button
 							onClick={handleAddMoney}
@@ -399,7 +399,7 @@ export default function WalletPage({ userData }: WalletPageProps) {
 						</button>
 					</div>
 
-					{/* Security Note */}
+					{}
 					<div className="mt-4 flex items-center gap-2 text-xs text-gray-500">
 						<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -409,7 +409,7 @@ export default function WalletPage({ userData }: WalletPageProps) {
 				</div>
 			)}
 
-			{/* Transfer Money Form */}
+			{}
 			{showTransfer && (
 				<div className="bg-white rounded-lg shadow-md p-6 mb-6">
 					<h3 className="text-xl font-semibold text-gray-900 mb-4">Transfer Money</h3>
@@ -446,7 +446,7 @@ export default function WalletPage({ userData }: WalletPageProps) {
 				</div>
 			)}
 
-			{/* Quick Actions */}
+			{}
 			<div className="grid grid-cols-3 gap-4 mb-6">
 				<button
 					onClick={() => {
@@ -489,7 +489,7 @@ export default function WalletPage({ userData }: WalletPageProps) {
 				</button>
 			</div>
 
-			{/* Wallet Statistics */}
+			{}
 			<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
 				<div className="bg-white rounded-lg shadow-md p-6">
 					<div className="flex items-center justify-between">
@@ -534,7 +534,7 @@ export default function WalletPage({ userData }: WalletPageProps) {
 				</div>
 			</div>
 
-			{/* Info Section */}
+			{}
 			<div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
 				<div className="flex items-start gap-3">
 					<svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

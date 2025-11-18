@@ -35,7 +35,6 @@ export default function MarketplaceView({
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // ---------------- FETCH PRODUCTS ----------------
     useEffect(() => {
         fetchProducts();
     }, []);
@@ -78,7 +77,6 @@ export default function MarketplaceView({
         }
     };
 
-    // ---------------- TRANSFORM DATA ----------------
     const transformedProducts = (products || []).map((product: any) => ({
         id: product.ID,
         name: product.Name,
@@ -108,7 +106,6 @@ export default function MarketplaceView({
         return matchesSearch && matchesCategory;
     });
 
-    // ---------------- UI STATES ----------------
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -137,7 +134,6 @@ export default function MarketplaceView({
         );
     }
 
-    // ---------------- MAIN RETURN ----------------
     return (
         <div>
             <div className="flex items-center justify-between mb-6">

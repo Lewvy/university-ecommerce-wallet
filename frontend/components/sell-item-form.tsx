@@ -40,24 +40,20 @@ export default function SellItemForm({ onSubmit, userData }: SellItemFormProps) 
 
 		const fileArray = Array.from(files)
 		
-		// Limit to 5 images
 		if (fileArray.length + images.length > 5) {
 			setError("Maximum 5 images allowed")
 			return
 		}
 
-		// Validate file types and sizes
 		const validFiles: File[] = []
 		const newPreviews: string[] = []
 
 		fileArray.forEach(file => {
-			// Check file type
 			if (!file.type.startsWith('image/')) {
 				setError(`${file.name} is not an image file`)
 				return
 			}
 
-			// Check file size (5MB limit)
 			if (file.size > 5 * 1024 * 1024) {
 				setError(`${file.name} is too large. Max size is 5MB`)
 				return
@@ -65,7 +61,6 @@ export default function SellItemForm({ onSubmit, userData }: SellItemFormProps) 
 
 			validFiles.push(file)
 			
-			// Create preview
 			const reader = new FileReader()
 			reader.onloadend = () => {
 				newPreviews.push(reader.result as string)
@@ -94,10 +89,8 @@ export default function SellItemForm({ onSubmit, userData }: SellItemFormProps) 
 				throw new Error("You must be logged in to sell items")
 			}
 
-			// Create FormData for multipart/form-data
 			const formDataToSend = new FormData()
 			
-			// Add text fields
 			formDataToSend.append("name", formData.name)
 			formDataToSend.append("description", formData.description)
 			formDataToSend.append("price", formData.price)
@@ -105,7 +98,6 @@ export default function SellItemForm({ onSubmit, userData }: SellItemFormProps) 
 			formDataToSend.append("category", formData.category)
 			formDataToSend.append("condition", formData.condition)
 
-			// Add images
 			images.forEach((image) => {
 				formDataToSend.append("images", image)
 			})
@@ -117,12 +109,11 @@ export default function SellItemForm({ onSubmit, userData }: SellItemFormProps) 
 				imageCount: images.length
 			})
 
-			// Send to backend
+
 			const response = await fetch("http://localhost:8088/products", {
 				method: "POST",
 				headers: {
 					"Authorization": `Bearer ${token}`,
-					// Don't set Content-Type - browser will set it with boundary for FormData
 				},
 				body: formDataToSend,
 			})
@@ -135,7 +126,6 @@ export default function SellItemForm({ onSubmit, userData }: SellItemFormProps) 
 			const data = await response.json()
 			console.log("Product created successfully:", data)
 
-			// Call parent's onSubmit for local state update
 			onSubmit({
 				...formData,
 				price: parseInt(formData.price),
@@ -144,7 +134,6 @@ export default function SellItemForm({ onSubmit, userData }: SellItemFormProps) 
 				image: imagePreviews[0] || "",
 			})
 
-			// Reset form
 			setFormData({
 				name: "",
 				category: "Books",
@@ -157,7 +146,6 @@ export default function SellItemForm({ onSubmit, userData }: SellItemFormProps) 
 			setImagePreviews([])
 			setSubmitted(true)
 
-			// Hide success message after 3 seconds
 			setTimeout(() => {
 				setSubmitted(false)
 			}, 3000)
@@ -294,7 +282,7 @@ export default function SellItemForm({ onSubmit, userData }: SellItemFormProps) 
 						</div>
 					</div>
 
-					{/* Image Upload */}
+					{}
 					<div>
 						<label className="block text-sm font-medium text-gray-700 mb-2">
 							Product Images (Max 5)
@@ -323,7 +311,7 @@ export default function SellItemForm({ onSubmit, userData }: SellItemFormProps) 
 							</label>
 						</div>
 
-						{/* Image Previews */}
+						{}
 						{imagePreviews.length > 0 && (
 							<div className="grid grid-cols-3 gap-4 mt-4">
 								{imagePreviews.map((preview, index) => (

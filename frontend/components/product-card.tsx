@@ -21,7 +21,7 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
 	return (
 		<div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden flex flex-col h-full">
 
-			{/* CLICKABLE IMAGE */}
+			{}
 			<img
 				onClick={() => router.push(`/product/${product.id}`)}
 				src={product.image || "/placeholder.jpg"}

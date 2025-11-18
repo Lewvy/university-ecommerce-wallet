@@ -95,7 +95,7 @@ export default function ProductDetailsPage() {
 				throw new Error(errorData.error || "Failed to add to cart");
 			}
 
-			// Success
+			
 			setIsAdded(true);
 			setTimeout(() => {
 				setIsAdded(false);
